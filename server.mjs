@@ -55,7 +55,7 @@ createServer(async (req, res) => {
       .end(req.method === 'HEAD' ? undefined : body);
     return;
   }
-  const mediaMatch = pathname.match(/^\/media\/(covers\/[0-9a-f-]{36}\.(?:webp|jpe?g|png)|chapters\/[0-9a-f-]{36}\/\d{3}\.(?:webp|jpe?g|png))$/);
+  const mediaMatch = pathname.match(/^\/media\/(covers\/[0-9a-f-]{36}(?:-360\.webp|\.(?:webp|jpe?g|png))|chapters\/[0-9a-f-]{36}\/\d{3}\.(?:webp|jpe?g|png))$/);
   if (mediaMatch) {
     const body = await readFile(`data/media/${mediaMatch[1]}`).catch(() => null);
     if (!body) { res.writeHead(404).end(); return; }

@@ -1,5 +1,7 @@
-import { access, mkdir, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { access, mkdir, rm, writeFile } from 'node:fs/promises';
 import { extname } from 'node:path';
+import { encodeCover } from './optimize-covers.mjs';
 
 const headers = {
   Accept: 'application/json',
@@ -18,6 +20,24 @@ async function downloadFile(url, dest) {
   if (!res?.ok) return false;
   await writeFile(dest, Buffer.from(await res.arrayBuffer()));
   return true;
+}
+
+async function downloadCover(url, id) {
+  if (!url || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(id)) return url;
+  const local = `/media/covers/${id}-360.webp`;
+  if (await exists(`data${local}`)) return local;
+  const source = `data${local}.${randomUUID()}.source`;
+  try {
+    if (!await downloadFile(url, source)) return url;
+    await encodeCover(source, `data${local}`);
+    return local;
+  } catch (error) {
+    if (error.code === 'ENOENT') throw error;
+    console.warn(`Could not optimize cover ${id}: ${error.message}`);
+    return url;
+  } finally {
+    await rm(source, { force: true });
+  }
 }
 
 async function pool(list, concurrency, fn) {
@@ -57,10 +77,7 @@ await pool(rawItems, 8, async (item, idx) => {
     }))
     .reverse();
 
-  const remoteCover = item.cover_portrait_url || item.cover_image_url || '';
-  const coverExt = extname(remoteCover.split('?')[0]) || '.webp';
-  const localCoverRel = `data/media/covers/${item.manga_id}${coverExt}`;
-  const coverOk = await downloadFile(remoteCover, localCoverRel);
+  const coverUrl = await downloadCover(item.cover_portrait_url || item.cover_image_url || '', item.manga_id);
 
   items[idx] = {
     id: item.manga_id,
@@ -74,7 +91,7 @@ await pool(rawItems, 8, async (item, idx) => {
     rating: Number(item.user_rate ?? 0),
     summary: (item.description ?? '').trim(),
     latestChapterNumber: item.latest_chapter_number ?? (chapters.at(-1)?.number || 1),
-    coverUrl: coverOk ? `/media/covers/${item.manga_id}${coverExt}` : remoteCover,
+    coverUrl,
     chapters: chapters.length ? chapters : [{ id: `${item.manga_id}-1`, number: 1, title: 'Chapter 1' }],
   };
 });

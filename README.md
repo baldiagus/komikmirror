@@ -1,6 +1,6 @@
 # Shinigami Lab
 
-Replika UI lokal independen untuk katalog dan pembaca komik. Cerita dan ilustrasinya dibuat untuk demo ini. Aplikasi tidak terhubung ke layanan Shinigami resmi.
+Replika UI lokal independen untuk katalog dan pembaca komik. Jika tersedia, katalog, cover, dan panel memakai data publik Shinigami; tanpa data unduhan, aplikasi memakai konten demo.
 
 ## Jalankan
 
@@ -9,6 +9,8 @@ node server.mjs
 ```
 
 Buka <http://127.0.0.1:4173/>. Tidak perlu instal dependensi. Server hanya mendengarkan di loopback; `PORT` dapat mengganti port default. `catalog.js` berisi katalog dan ilustrasi lokal, `pages.js` merender halaman, dan `app.js` menangani URL serta penyimpanan di browser.
+
+`node scrape.mjs` memperbarui katalog dan mengunduh media. Cover baru disimpan sebagai WebP kualitas 75 dengan lebar maksimal 360 px, tanpa memperbesar cover kecil. Jalankan `node optimize-covers.mjs` untuk mengonversi cache cover lama tanpa mengunduh ulang; skrip baru menghapus cover lama setelah katalog menunjuk ke hasil konversi, dan tidak mengubah panel chapter. Kedua perintah membutuhkan `ffmpeg` dengan encoder `libwebp` di `PATH` dan dijalankan dari root proyek. Jangan jalankan scraper dan konversi cache secara bersamaan.
 
 ## Cakupan
 
@@ -21,7 +23,7 @@ Buka <http://127.0.0.1:4173/>. Tidak perlu instal dependensi. Server hanya mende
 | Leaderboard, aura, panduan, dan notifikasi | `/leaderboard`, `/sistem-aura`, `/panduan/*`, `/notifikasi` |
 | Paket dan pengaturan | `/premium`, `/settings`, `/settings/{akun,baca,notifikasi,privasi,selera,pembayaran}`, `/settings/akun/klaim`, `/settings/upgrade` |
 
-Bookmark, riwayat, antrean, profil, preferensi, post, dan pesan tersimpan di browser yang membuka aplikasi. Tidak ada login, pembayaran, sinkronisasi antarpengguna, katalog asli, atau salinan data akun. Rute yang hanya terlihat pada deklarasi router publik memiliki implementasi lokal berdasarkan nama dan konteksnya, bukan hasil pemeriksaan sesi login.
+Bookmark, riwayat, antrean, profil, preferensi, post, dan pesan tersimpan di browser yang membuka aplikasi. Tidak ada login, pembayaran, sinkronisasi antarpengguna, atau salinan data akun. Rute yang hanya terlihat pada deklarasi router publik memiliki implementasi lokal berdasarkan nama dan konteksnya.
 
 ## Referensi dan verifikasi
 
