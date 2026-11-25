@@ -141,7 +141,25 @@ export function chat(state, query, room = 'umum', message) {
 
 export function profile(state, query, username) {
   const mine = username === 'me' || username === 'pembaca-lokal';
-  return `${title('Profil')}<section class="surface profile"><div class="avatar" aria-hidden="true">${mine ? e(state.name.slice(0,1).toUpperCase()) : '◇'}</div><div><h2>${mine ? e(state.name) : e(username)}</h2><p class="meta">${mine ? 'Pembaca lokal' : 'Tidak ada data profil publik di perangkat ini.'}</p>${mine ? `<div class="actions">${link('Edit profil','/settings/akun')}${link('Lihat Pustaka','/library')}</div>` : ''}</div></section>`;
+  if (!mine) return `${title('Profil')}<section class="surface profile"><div class="avatar" aria-hidden="true">◇</div><div><h2>${e(username)}</h2><p class="meta">Tidak ada data profil publik di perangkat ini.</p></div></section>`;
+  const tab = tabIndex(query, 'tab', 3);
+  const auraPoints = state.history.length * 10;
+  const needed = Math.max(0, 500 - auraPoints);
+  const items = tab === 1 ? state.posts : tab === 2 ? state.replies : comics.filter(x => state.bookmarks.includes(x.id));
+  return `<h1 class="sr-only">Profil</h1>
+    <section class="surface profile-hero"><div class="profile-banner">${link('Ubah banner','/settings/akun?edit=banner','chip')}</div>
+      <div class="profile-head"><div class="avatar" aria-hidden="true">${e(state.name.slice(0,1).toUpperCase())}</div>
+        <div><h2>${e(state.name)}</h2><p class="meta">@${e(state.name.toLowerCase().replace(/[^a-z0-9]+/g,'') || 'pembaca')} · Pembaca lokal</p></div>
+        <div class="actions">${link('Ubah avatar','/settings/akun?edit=avatar')}${link('Pengaturan','/settings')}</div></div></section>
+    <section class="stats-grid" aria-label="Statistik akun">
+      <div class="surface stat"><strong>${state.history.length}</strong><span class="meta">Riwayat</span></div>
+      <div class="surface stat"><strong>${state.bookmarks.length}</strong><span class="meta">Bookmark</span></div>
+      <div class="surface stat"><strong>${state.posts.length}</strong><span class="meta">Postingan</span></div>
+      <div class="surface stat"><strong>${state.replies.length}</strong><span class="meta">Komentar</span></div></section>
+    <section class="surface upgrade-bar"><div><h2>Naik ke Plus, Pro, atau Max</h2><p class="meta">Tanpa iklan, baca lebih awal, dan Aura kamu dikali sesuai tier.</p></div>${link('Upgrade','/premium','primary')}</section>
+    <a class="surface aura-card" href="/sistem-aura"><div class="aura-top"><strong><span class="points">${auraPoints}</span> Aura</strong><span class="points">Peringkat #0</span></div><div class="aura-bar"><span style="width:${Math.min(100, auraPoints / 5)}%"></span></div><p class="meta">${needed} aura lagi buat naik ke Hunter E-Rank ›</p></a>
+    ${tabLinks(['Bookmark', 'Postingan', 'Komentar'], tab, i => tabHref('/user/me', 'tab', i))}
+    ${items.length ? (tab === 0 ? tiles(items) : `<div class="stack">${items.map(x => `<div class="row"><strong>${e(x.title ?? x.body)}</strong><span>${e(x.author)}</span></div>`).join('')}</div>`) : box('Belum ada data', 'Aktivitas lokal untuk bagian ini akan tampil di sini.', link('Jelajahi Komik','/series','primary'))}`;
 }
 
 export function leaderboard(state, query) {

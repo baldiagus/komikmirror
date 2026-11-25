@@ -122,7 +122,20 @@ summary { cursor: pointer; }
 .highlighted { background: #292111; border-inline-start: 2px solid var(--gold); }
 .inline-form { display: flex; gap: .5rem; }
 .profile { display: flex; align-items: center; gap: 1rem; padding: 1rem; }
-.profile h2 { overflow-wrap: anywhere; }
+.profile h2, .profile-head h2 { overflow-wrap: anywhere; }
+.profile-hero { overflow: hidden; }
+.profile-banner { display: flex; justify-content: flex-end; align-items: flex-start; padding: .75rem; min-height: 7.5rem; background: linear-gradient(135deg, #211d2b, #141418); border-bottom: 1px solid var(--line); }
+.profile-head { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; padding: 1rem; }
+.profile-head .actions { margin-left: auto; margin-block: 0; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .7rem; margin-block: 1rem; }
+.stat { padding: .9rem; text-align: center; }
+.stat strong { display: block; font-size: 1.35rem; }
+.upgrade-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; padding: 1rem; margin-bottom: 1rem; }
+.upgrade-bar p { margin: 0; }
+.aura-card { display: block; padding: 1rem; margin-bottom: 1rem; }
+.aura-top { display: flex; justify-content: space-between; margin-bottom: .5rem; }
+.aura-bar { height: .45rem; background: #262626; border-radius: 99px; overflow: hidden; margin-bottom: .5rem; }
+.aura-bar span { display: block; height: 100%; background: var(--gold); }
 .avatar { background: var(--gold); color: var(--on-gold); border-radius: 50%; width: 4rem; height: 4rem; display: grid; place-items: center; flex: none; font-size: 1.4rem; font-weight: 740; }
 .premium-intro { text-align: center; margin-bottom: 1.5rem; }
 .premium-intro .tabs { justify-content: center; }
