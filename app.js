@@ -1,16 +1,16 @@
-import { allGenres, comics, seriesUrl, types } from './catalog.js';
+import { allGenres, comics, icon, seriesUrl, types } from './catalog.js';
 import * as pages from './pages.js';
 
 const storageKey = 'shinigami-lab-v1';
-const defaults = { bookmarks: [], queue: [], history: [], notices: [], posts: [], replies: [], chat: [], name: 'Pembaca Lokal', prefs: { wide: false, alerts: true, taste: '', mode: 'Gulir', autonext: false, genres: [] } };
+const defaults = {
+  bookmarks: [], queue: [], history: [], notices: [], readNotices: [], posts: [], replies: [], chat: [],
+  name: 'Pembaca Lokal',
+  prefs: { wide: false, alerts: true, taste: '', mode: 'Gulir', autonext: false, genres: [], showHistory: true, showBookmarks: true, allowMentions: true },
+};
 const query = new URLSearchParams(location.search);
 const root = document.querySelector('#app');
 const nav = [['Komik', '/series'], ['Pustaka', '/library'], ['Komunitas', '/community'], ['Premium', '/premium']];
-const svg = path => `<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
-const searchIcon = svg('<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>');
-const chatIcon = svg('<path d="M20 11.5a8 8 0 0 1-8 8 8 8 0 0 1-3.4-.8L4 20l1.3-4.6A8 8 0 1 1 20 11.5Z"/>');
-const bellIcon = svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>');
-const mark = `<a class="brand" href="/" aria-label="Shinigami S1, beranda">${svg('<circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8.5 15c1 1 2.2 1.5 3.5 1.5s2.5-.5 3.5-1.5"/>')}<span>SHINIGAMI</span><b>S1</b></a>`;
+const mark = `<a class="brand" href="/" aria-label="Shinigami S1, beranda">${icon('brand', 18)}<span>Shinigami</span><span class="brand-tag">S1</span></a>`;
 const appUrl = location.pathname.replace(/\/+$/, '') || '/';
 const idPattern = /^[a-z0-9-]{1,80}$/;
 const strings = (candidate, limit = Infinity) => Array.isArray(candidate) ? candidate.filter(x => typeof x === 'string').slice(0, limit) : [];
@@ -25,6 +25,7 @@ function load() {
     queue: strings(s.queue, 30).filter(id => comics.some(c => c.id === id)),
     history: strings(s.history).filter(id => comics.some(c => c.chapters.some(ch => ch.id === id))),
     notices: strings(s.notices, 30),
+    readNotices: strings(s.readNotices, 30),
     posts: records(s.posts, x => idPattern.test(x.id) && typeof x.title === 'string' && Number.isInteger(x.category) && x.category > 0 && x.category < 7),
     replies: records(s.replies, x => idPattern.test(x.topic)),
     chat: records(s.chat, x => idPattern.test(x.id) && idPattern.test(x.room)),
@@ -36,6 +37,9 @@ function load() {
       mode: ['Gulir', 'Halaman', 'Dua halaman'].includes(s.prefs?.mode) ? s.prefs.mode : 'Gulir',
       autonext: s.prefs?.autonext === true,
       genres: strings(s.prefs?.genres, 20).filter(g => allGenres.includes(g)),
+      showHistory: s.prefs?.showHistory !== false,
+      showBookmarks: s.prefs?.showBookmarks !== false,
+      allowMentions: s.prefs?.allowMentions !== false,
     },
   };
 }
@@ -44,7 +48,11 @@ function save() {
   try { localStorage.setItem(storageKey, JSON.stringify(state)); return true; }
   catch { announce('Penyimpanan browser tidak tersedia. Perubahan hanya berlaku pada halaman ini.'); return false; }
 }
-function notice(text) { if (state.prefs.alerts) state.notices = [text, ...state.notices].slice(0, 30); }
+function notice(text) {
+  if (!state.prefs.alerts) return;
+  state.notices = [text, ...state.notices.filter(x => x !== text)].slice(0, 30);
+  state.readNotices = state.readNotices.filter(x => x !== text);
+}
 function announce(message) { const status = document.querySelector('#status'); if (status) status.textContent = message; }
 function navLink([label, href]) {
   const selected = appUrl === href || appUrl.startsWith(`${href}/`) || (href === '/series' && appUrl.startsWith('/chapter/'));
@@ -52,15 +60,15 @@ function navLink([label, href]) {
 }
 function header() {
   const userInitials = (state.name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('') || 'HL').toUpperCase();
-  const hasNotices = state.prefs.alerts && state.notices.length > 0;
-  return `<header class="site-header"><div class="masthead">${mark}<nav class="site-nav" aria-label="Navigasi utama">${nav.map(navLink).join('')}</nav><div class="tools"><button class="icon" data-dialog="search" aria-label="Cari">${searchIcon}</button><a class="icon chat-link" href="/community/chat" aria-label="Ruang obrolan">${chatIcon}<span class="dot" aria-hidden="true"></span></a><a class="icon" href="/notifikasi" aria-label="Notifikasi">${bellIcon}${hasNotices ? '<span class="dot" aria-hidden="true"></span>' : ''}</a><details class="user-menu"><summary class="avatar-pill" aria-label="Menu pengguna">${userInitials}</summary><nav class="surface" aria-label="Menu pengguna"><a href="/user/me">Profil</a><a href="/notifikasi">Notifikasi${hasNotices ? ` (${state.notices.length})` : ''}</a><a href="/settings">Pengaturan</a><a href="/sistem-aura">Aura &amp; Badge</a><a href="/panduan">Panduan</a><a href="/onboarding">Mulai demo</a></nav></details></div></div></header>`;
+  const unreadCount = state.prefs.alerts ? state.notices.filter(x => !state.readNotices.includes(x)).length : 0;
+  return `<header class="site-header"><div class="masthead">${mark}<nav class="site-nav" aria-label="Navigasi utama">${nav.map(navLink).join('')}</nav><div class="tools"><button class="icon" data-dialog="search" aria-label="Cari">${icon('search', 18)}</button><a class="icon chat-link" href="/community/chat" aria-label="Ruang obrolan">${icon('chat', 18)}</a><a class="icon" href="/notifikasi" aria-label="Notifikasi">${icon('bell', 18)}${unreadCount ? '<span class="dot" aria-hidden="true"></span>' : ''}</a><details class="user-menu"><summary class="avatar-pill" aria-label="Menu pengguna">${userInitials}</summary><nav class="surface" aria-label="Menu pengguna"><a href="/user/me">Profil</a><a href="/notifikasi">Notifikasi${unreadCount ? ` (${unreadCount})` : ''}</a><a href="/settings">Pengaturan</a><a href="/sistem-aura">Aura &amp; Badge</a><a href="/panduan">Panduan</a><a href="/onboarding">Mulai demo</a></nav></details></div></div></header>`;
 }
 function footer() {
-  return `<footer class="site-footer"><div class="foot-grid"><div>${mark}<p>Baca manga, manhwa, dan manhua terbaru. Simpan bacaan di Pustaka dan ngobrol bareng di Komunitas.</p></div><nav aria-label="Jelajahi"><strong>Jelajahi</strong><a href="/series">Komik</a><a href="/library">Pustaka</a><a href="/community">Komunitas</a><a href="/leaderboard">Leaderboard</a></nav><nav aria-label="Akun"><strong>Akun</strong><a href="/premium">Premium</a><a href="/user/me">Profil</a><a href="/settings">Pengaturan</a></nav><nav aria-label="Bantuan"><strong>Bantuan</strong><a href="/sistem-aura">Aura &amp; Badge</a><a href="/panduan">Panduan</a></nav></div><div class="foot-end"><span>© 2026 Shinigami Lab · replika lokal independen</span><a href="#top">Kembali ke atas</a></div></footer>`;
+  return `<footer class="site-footer"><div class="foot-grid"><div>${mark}<p>Baca manga, manhwa, dan manhua terbaru. Simpan bacaan di Pustaka dan ngobrol bareng di Komunitas.</p></div><nav aria-label="Jelajahi"><strong>Jelajahi</strong><a href="/series">Komik</a><a href="/library">Pustaka</a><a href="/community">Komunitas</a><a href="/leaderboard">Leaderboard</a></nav><nav aria-label="Akun"><strong>Akun</strong><a href="/premium">Premium</a><a href="/user/me">Profil</a><a href="/settings">Pengaturan</a></nav><nav aria-label="Bantuan"><strong>Bantuan</strong><a href="/sistem-aura">Aura &amp; Badge</a><a href="/panduan">Panduan</a></nav></div><div class="foot-end"><span>Shinigami Lab · replika lokal</span><a href="#top">Kembali ke atas</a></div></footer>`;
 }
 function modal() {
-  return `<dialog id="search" aria-labelledby="search-title"><div class="dialog-heading"><h2 id="search-title">Cari komik</h2><form method="dialog"><button aria-label="Tutup pencarian">×</button></form></div><form action="/series"><label class="sr-only" for="quick-search">Judul komik</label><input type="search" name="q" id="quick-search" maxlength="100" placeholder="Masukkan judul…" autofocus></form><div id="search-results" class="stack" aria-live="polite"></div></dialog>
-  <dialog id="demo" aria-labelledby="demo-title"><div class="dialog-heading"><h2 id="demo-title">Pembelian tidak tersedia</h2><form method="dialog"><button aria-label="Tutup informasi">×</button></form></div><p>Ini adalah demo lokal. Tidak ada pembayaran atau penagihan, dan kamu tidak perlu memasukkan data akun.</p></dialog>`;
+  return `<dialog id="search" aria-labelledby="search-title"><div class="dialog-heading"><h2 id="search-title">Cari komik</h2><form method="dialog"><button class="icon" aria-label="Tutup pencarian">${icon('close', 16)}</button></form></div><form action="/series"><label class="sr-only" for="quick-search">Judul komik</label><input type="search" name="q" id="quick-search" maxlength="100" placeholder="Masukkan judul" autofocus></form><div id="search-results" class="stack" aria-live="polite"></div></dialog>
+  <dialog id="demo" aria-labelledby="demo-title"><div class="dialog-heading"><h2 id="demo-title">Pembelian tidak tersedia</h2><form method="dialog"><button class="icon" aria-label="Tutup informasi">${icon('close', 16)}</button></form></div><p>Ini adalah demo lokal. Tidak ada pembayaran atau penagihan, dan kamu tidak perlu memasukkan data akun.</p></dialog>`;
 }
 
 function resolve() {
@@ -109,7 +117,7 @@ function searchResults() {
   const input = document.querySelector('#quick-search');
   const keyword = input.value.trim().toLowerCase();
   const results = comics.filter(comic => comic.title.toLowerCase().includes(keyword)).slice(0, 6);
-  document.querySelector('#search-results').innerHTML = results.length ? results.map(x => `<a class="row" href="${seriesUrl(x)}"><strong>${x.title}</strong><span>${x.type}</span><span>›</span></a>`).join('') : '<p>Tidak ada komik yang cocok.</p>';
+  document.querySelector('#search-results').innerHTML = results.length ? results.map(x => `<a class="row" href="${seriesUrl(x)}"><strong>${x.title}</strong><span>${x.type}</span>${icon('chevRight')}</a>`).join('') : '<p class="meta">Tidak ada komik yang cocok.</p>';
 }
 function moveHero(step) {
   const track = document.querySelector('.hero-track');
@@ -125,7 +133,16 @@ root.addEventListener('click', event => {
   if (!button) return;
   if (button.hasAttribute('data-toggle-composer')) {
     const composer = document.querySelector('#post-composer');
-    if (composer) { composer.open = !composer.open; composer.querySelector('input')?.focus(); }
+    if (composer) {
+      composer.hidden = !composer.hidden;
+      button.setAttribute('aria-expanded', String(!composer.hidden));
+      if (!composer.hidden) composer.querySelector('input')?.focus();
+    }
+    return;
+  }
+  if (button.hasAttribute('data-mark-read')) {
+    state.readNotices = [...new Set([...state.readNotices, ...state.notices])];
+    if (save()) location.reload();
     return;
   }
   const { rail, slide, dialog, toggle, clear, id } = button.dataset;
@@ -143,7 +160,7 @@ root.addEventListener('click', event => {
     button.textContent = toggle === 'bookmarks' ? (selected ? 'Bookmark' : 'Tersimpan') : (selected ? 'Tambah ke antrean' : 'Dalam antrean');
     if (save()) announce(button.textContent);
   }
-  if (clear && confirm(clear === 'history' ? 'Hapus semua riwayat baca lokal?' : 'Hapus semua notifikasi lokal?')) {
+  if (clear && confirm('Hapus semua riwayat baca lokal?')) {
     state[clear] = [];
     if (save()) location.reload();
   }
@@ -189,6 +206,11 @@ root.addEventListener('submit', event => {
       state.prefs.mode = String(formData.get('mode') ?? 'Gulir');
     }
     if (id === 'notifikasi') state.prefs.alerts = formData.has('alerts');
+    if (id === 'privasi') {
+      state.prefs.showHistory = formData.has('showHistory');
+      state.prefs.showBookmarks = formData.has('showBookmarks');
+      state.prefs.allowMentions = formData.has('allowMentions');
+    }
     if (id === 'selera') {
       state.prefs.taste = String(formData.get('taste') ?? '');
       state.prefs.genres = formData.getAll('genres').map(String);
