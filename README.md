@@ -1,18 +1,25 @@
-# Shinigami Lab
+# Komik Mirror
 
 Replika UI lokal independen untuk katalog dan pembaca komik. Jika tersedia, katalog, cover, dan panel memakai data publik Shinigami; tanpa data unduhan, aplikasi memakai konten demo.
 
-## Jalankan
+## Struktur proyek
+
+- `src/` — aplikasi Next.js.
+- `public/` — favicon dan aset SVG bersama untuk Next.js dan server lama.
+- `legacy/` — HTML, CSS, JavaScript, dan server untuk rute yang belum dipindahkan.
+- `scripts/` — scraper, optimasi cover, dan perintah operasional.
+
+## Jalankan server lama
 
 ```sh
-node server.mjs
+npm run legacy:dev
 ```
 
-Buka <http://127.0.0.1:4173/>. Tidak perlu instal dependensi. Server hanya mendengarkan di loopback; `PORT` dapat mengganti port default. `catalog.js` berisi katalog dan ilustrasi lokal, `pages.js` merender halaman, dan `app.js` menangani URL serta penyimpanan di browser.
+Buka <http://127.0.0.1:4173/>. Server lama hanya mendengarkan di loopback; `PORT` dapat mengganti port default. Lihat [panduan cutover](docs/cutover-and-rollback.md) untuk aplikasi Next.js dan pemetaan rute.
 
-`node scrape.mjs` memperbarui katalog dan mengunduh media. Cover baru disimpan sebagai WebP kualitas 75 dengan lebar maksimal 360 px, tanpa memperbesar cover kecil. Jalankan `node optimize-covers.mjs` untuk mengonversi cache cover lama tanpa mengunduh ulang; skrip baru menghapus cover lama setelah katalog menunjuk ke hasil konversi, dan tidak mengubah panel chapter. Kedua perintah membutuhkan `ffmpeg` dengan encoder `libwebp` di `PATH` dan dijalankan dari root proyek. Jangan jalankan scraper dan konversi cache secara bersamaan.
+`node scripts/scrape.mjs` memperbarui katalog dan mengunduh media. Cover baru disimpan sebagai WebP kualitas 75 dengan lebar maksimal 360 px, tanpa memperbesar cover kecil. Jalankan `node scripts/optimize-covers.mjs` untuk mengonversi cache cover lama tanpa mengunduh ulang; skrip hanya menghapus cover lama setelah katalog menunjuk ke hasil konversi dan tidak mengubah panel chapter. Kedua perintah membutuhkan `ffmpeg` dengan encoder `libwebp` di `PATH` dan dijalankan dari root proyek. Jangan jalankan scraper dan konversi cache secara bersamaan.
 
-## Cakupan
+## Cakupan server lama
 
 | Alur | Rute lokal |
 | --- | --- |

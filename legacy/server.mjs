@@ -11,7 +11,7 @@ const assets = new Map([
 ]);
 const html = await readFile(new URL('./index.html', import.meta.url));
 const files = new Map(await Promise.all([...assets].map(async ([name, type]) => [
-  name, { type, body: await readFile(new URL(`.${name}`, import.meta.url)) },
+  name, { type, body: await readFile(new URL(type === 'image/svg+xml' ? `../public${name}` : `.${name}`, import.meta.url)) },
 ])));
 const mime = new Map([['.webp', 'image/webp'], ['.jpg', 'image/jpeg'], ['.jpeg', 'image/jpeg'], ['.png', 'image/png']]);
 

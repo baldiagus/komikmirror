@@ -40,12 +40,6 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "app.js",
-    "catalog.js",
-    "pages.js",
-    "server.mjs",
-    "scrape.mjs",
-    "optimize-covers.mjs"
+    "node_modules"
   ]
 }

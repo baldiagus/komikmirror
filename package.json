@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start --hostname 127.0.0.1 --port 3000",
     "typecheck": "tsc --noEmit",
-    "legacy:dev": "node server.mjs",
+    "legacy:dev": "node legacy/server.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "auth:schema": "auth generate --config src/lib/auth.ts --output src/db/schema/auth.ts --yes",

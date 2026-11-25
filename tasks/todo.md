@@ -27,6 +27,8 @@ Rencana: [plan.md](plan.md). Implementasi CRUD selesai dan terverifikasi pada st
 
 ## Bukti verifikasi aktual
 
+Catatan: `server.mjs` pada hasil verifikasi historis di bawah sekarang berada di `legacy/server.mjs`; jalankan `npm run legacy:dev`.
+
 - `docker compose --env-file .env.example config -q` → exit `0`.
 - `npm run auth:schema` (`auth@1.7.28`) → menghasilkan `src/db/schema/auth.ts`; `npm run db:generate` (`drizzle-kit@0.31.11`) → menghasilkan `drizzle/0000_nostalgic_speed_demon.sql` (11 tabel).
 - `npm run typecheck` (`tsc --noEmit`) & `npm run build` (`next build` standalone) → exit `0`, 0 error, 0 warning.

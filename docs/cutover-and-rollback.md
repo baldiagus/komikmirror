@@ -1,6 +1,6 @@
 # Panduan Cutover, Backup/Restore, dan Rollback Komik Mirror
 
-Dokumen ini merangkum pemetaan rute antara server lama (`server.mjs`, port `4173`) dan aplikasi Next.js + MySQL (`web`, port `3000`), prosedur backup/restore terverifikasi, serta simulasi rollback sebelum cutover produksi.
+Dokumen ini merangkum pemetaan rute antara server lama (`legacy/server.mjs`, port `4173`) dan aplikasi Next.js + MySQL (`web`, port `3000`), prosedur backup/restore terverifikasi, serta simulasi rollback sebelum cutover produksi.
 
 > **Penting:** Implementasi paket CRUD ini **tidak** memotong trafik pengguna, **tidak** menghapus `data/` lokal, dan **tidak** memakai secret produksi.
 
@@ -13,7 +13,7 @@ Dokumen ini merangkum pemetaan rute antara server lama (`server.mjs`, port `4173
 | `/login`, `/register`, `/forgot-password`, `/reset-password`, `/verify-email`, `/api/auth/[...all]` | **Baru (Better Auth + SMTP)** | Pendaftaran publik mati secara default (`ALLOW_PUBLIC_SIGNUP=false`) sampai SMTP & rate limit produksi terverifikasi. Role awal hanya lewat perintah operator `npm run admin:promote`. |
 | `/admin/series`, `/admin/series/new`, `/admin/series/[id]`, `/admin/series/[id]/chapters/[chapterId]` | **Baru (CRUD Admin)** | Dilindungi pemeriksaan sesi & role di layout dan setiap Server Action. Tombol hapus mengarsipkan seri/chapter. |
 | `/api/media/[id]`, `/api/health` | **Baru (Media & Health)** | Media draft/arsip hanya dapat dibaca admin; media terbit publik. Tidak ada fetch URL klien oleh server. |
-| `/community*`, `/chat/*`, `/user/*`, `/leaderboard`, `/sistem-aura`, `/panduan*`, `/notifikasi`, `/premium`, `/settings*`, `/onboarding*`, `/claim` | **Tetap di server lama (`server.mjs`, port `4173`)** | Di luar cakupan paket CRUD ini. Jangan mematikan server lama bila pengguna masih memerlukan rute-rute tersebut. |
+| `/community*`, `/chat/*`, `/user/*`, `/leaderboard`, `/sistem-aura`, `/panduan*`, `/notifikasi`, `/premium`, `/settings*`, `/onboarding*`, `/claim` | **Tetap di server lama (`legacy/server.mjs`, port `4173`)** | Di luar cakupan paket CRUD ini. Jangan mematikan server lama bila pengguna masih memerlukan rute-rute tersebut. |
 
 ## 2. Backup dan Restore (DB + Media sebagai satu set)
 
@@ -49,7 +49,7 @@ Keluaran backup set terdiri dari:
 ## 3. Checklist pra-cutover & simulasi rollback
 
 1. **Baseline sebelum cutover:** Simpan arsip `data/catalog.json` + `data/media/` dan jalankan `scripts/backup.mjs` pada stack Next.js.
-2. **Smoke test paralel:** Jalankan Next.js di port `3000` sementara server lama tetap berjalan di port `4173` (`node server.mjs`). Pastikan kedua layanan hidup tanpa konflik dan data `data/` tidak berubah.
+2. **Smoke test paralel:** Jalankan Next.js di port `3000` sementara server lama tetap berjalan di port `4173` (`npm run legacy:dev`). Pastikan kedua layanan hidup tanpa konflik dan data `data/` tidak berubah.
 3. **Verifikasi prasyarat produksi:**
    - Ganti seluruh secret placeholder di `.env` (`BETTER_AUTH_SECRET`, password MySQL root/migrator/app).
    - Aktifkan HTTPS di reverse proxy dengan `BETTER_AUTH_URL=https://...` dan `APP_ORIGIN=https://...`.
