@@ -150,6 +150,27 @@ root.addEventListener('click', event => {
     }
     return;
   }
+  if (button.hasAttribute('data-load-more')) {
+    const grid = document.querySelector('[data-project-grid]');
+    if (!grid) return;
+    const filtered = Number(button.dataset.jenis) || 0;
+    const shown = grid.children.length;
+    const items = pages.projectList(filtered);
+    const batch = items.slice(shown, shown + pages.projectBatchSize);
+    if (!batch.length) { button.closest('.load-more')?.remove(); return; }
+    grid.insertAdjacentHTML('beforeend', pages.tileItems(batch, true));
+    const nextShown = grid.children.length;
+    const firstNewLink = grid.children[shown]?.querySelector('a');
+    if (nextShown >= items.length) {
+      button.closest('.load-more')?.remove();
+      announce(`Menampilkan semua ${items.length} komik.`);
+    } else {
+      button.dataset.shown = String(nextShown);
+      announce(`Menampilkan ${nextShown} dari ${items.length} komik.`);
+    }
+    firstNewLink?.focus({ preventScroll: true });
+    return;
+  }
   if (button.hasAttribute('data-mark-read')) {
     state.readNotices = [...new Set([...state.readNotices, ...state.notices])];
     if (save()) location.reload();

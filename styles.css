@@ -115,6 +115,7 @@ summary { cursor: pointer; }
 .tile .meta { font-size: 12px; }
 .chapter-pills { display: grid; gap: 4px; margin-top: auto; }
 .chapter-pills a { min-height: 36px; padding: 0 8px; font-size: 12px; justify-content: space-between; border-radius: 6px; }
+.load-more { display: flex; justify-content: center; margin-top: 20px; }
 @media (max-width: 960px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .meta, .local-note { color: var(--muted); font-size: 13px; }
 .points { color: var(--accent); }

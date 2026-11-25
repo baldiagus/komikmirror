@@ -70,8 +70,13 @@ const handleOf = name => name.toLowerCase().replace(/[^a-z0-9]+/g, '') || 'huoli
 const initials = name => (name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('') || 'HL').toUpperCase();
 const ratingBadge = rating => rating > 0 ? `<span class="rating">${icon('star', 12)} ${rating.toFixed(1)}</span>` : '';
 
+export const projectBatchSize = 20;
+export const projectList = filtered => filtered ? comics.filter(x => x.type === types[filtered - 1]) : comics;
+export function tileItems(items, chapters = false) {
+  return items.map(comic => `<article class="surface tile"><a href="${seriesUrl(comic)}">${cover(comic)}<h3>${e(comic.title)}</h3></a>${chapters ? `<div class="chapter-pills">${comic.chapters.slice(-2).reverse().map(ch => `<a class="chip" href="${chapterUrl(ch)}"><span class="num">Chapter ${ch.number}</span><small class="meta num">${e(comic.updated)}</small></a>`).join('')}</div>` : `<p class="meta">${comic.type} · ${e(comic.genre)}${comic.rating > 0 ? ` · <span class="rate-inline">${icon('star', 12)} ${comic.rating.toFixed(1)}</span>` : ''}</p>`}</article>`).join('');
+}
 function tiles(items, chapters = false) {
-  return `<div class="grid">${items.map(comic => `<article class="surface tile"><a href="${seriesUrl(comic)}">${cover(comic)}<h3>${e(comic.title)}</h3></a>${chapters ? `<div class="chapter-pills">${comic.chapters.slice(-2).reverse().map(ch => `<a class="chip" href="${chapterUrl(ch)}"><span class="num">Chapter ${ch.number}</span><small class="meta num">${e(comic.updated)}</small></a>`).join('')}</div>` : `<p class="meta">${comic.type} · ${e(comic.genre)}${comic.rating > 0 ? ` · <span class="rate-inline">${icon('star', 12)} ${comic.rating.toFixed(1)}</span>` : ''}</p>`}</article>`).join('')}</div>`;
+  return `<div class="grid">${tileItems(items, chapters)}</div>`;
 }
 
 export function home(state, query) {
@@ -83,14 +88,15 @@ export function home(state, query) {
   if (active === 1) ranked.sort((a, b) => (a.index % 3) - (b.index % 3));
   if (active === 2) ranked.reverse();
   if (active === 3) ranked.sort((a, b) => b.rating - a.rating);
-  const items = filtered ? comics.filter(x => x.type === types[filtered - 1]) : comics;
+  const items = projectList(filtered);
+  const shown = Math.min(items.length, projectBatchSize);
   return `<h1 class="sr-only">Beranda</h1><section class="hero" aria-label="Komik unggulan">
     <div class="hero-track">${hero.map((comic, i) => `<a class="hero-cover${i === 3 ? ' featured' : ''}" href="${seriesUrl(comic)}" aria-label="${e(comic.title)}${comic.rating > 0 ? `, rating ${comic.rating.toFixed(1)}` : ''}">${cover(comic, false)}${ratingBadge(comic.rating)}<strong>${e(comic.title)}</strong></a>`).join('')}</div>
     <button class="hero-arrow prev" data-slide="-1" aria-label="Unggulan sebelumnya">${icon('chevLeft')}</button><button class="hero-arrow next" data-slide="1" aria-label="Unggulan berikutnya">${icon('chevRight')}</button></section>
     <section class="rank-section"><h2 class="sr-only">Peringkat komik</h2>${tabLinks(groups, active, i => { const q = new URLSearchParams(query); q.set('rank', i); return `/?${e(q)}#rank`; })}
     <div id="rank" class="rank-track" tabindex="0" aria-label="Daftar peringkat">${ranked.slice(0, 9).map((comic, i) => `<a class="rank-card" href="${seriesUrl(comic)}">${cover(comic)}<div class="rank-meta"><b class="${i === 0 ? 'points' : ''}">${i + 1}</b><div><strong>${e(comic.title)}</strong><small>Ch. ${comic.latestChapterNumber ?? comic.chapters.length} · ${e(comic.updated)}</small></div></div></a>`).join('')}</div>
     <div class="rail-actions"><button data-rail="-1" aria-label="Peringkat sebelumnya">${icon('chevLeft')}</button><button data-rail="1" aria-label="Peringkat berikutnya">${icon('chevRight')}</button></div></section>
-    <section id="project"><div class="section-heading"><h2>Project</h2>${tabLinks(['Semua', ...types], filtered, i => { const q = new URLSearchParams(query); q.set('jenis', i); return `/?${e(q)}#project`; })}</div>${tiles(items.slice(0, 20), true)}</section>`;
+    <section id="project"><div class="section-heading"><h2>Project</h2>${tabLinks(['Semua', ...types], filtered, i => { const q = new URLSearchParams(query); q.set('jenis', i); return `/?${e(q)}#project`; })}</div><div class="grid" data-project-grid>${tileItems(items.slice(0, shown), true)}</div>${items.length > shown ? `<div class="load-more"><button type="button" data-load-more data-jenis="${filtered}" data-shown="${shown}">Muat lainnya</button></div>` : ''}</section>`;
 }
 
 export function catalog(state, query) {
