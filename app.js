@@ -1,16 +1,16 @@
-import { comics, escape as e, seriesUrl, types } from './catalog.js';
+import { allGenres, comics, seriesUrl, types } from './catalog.js';
 import * as pages from './pages.js';
 
 const storageKey = 'shinigami-lab-v1';
-const defaults = { bookmarks: [], queue: [], history: [], notices: [], posts: [], replies: [], chat: [], name: 'Pembaca Lokal', prefs: { wide: false, alerts: true, taste: '' } };
+const defaults = { bookmarks: [], queue: [], history: [], notices: [], posts: [], replies: [], chat: [], name: 'Pembaca Lokal', prefs: { wide: false, alerts: true, taste: '', mode: 'Gulir', autonext: false, genres: [] } };
 const query = new URLSearchParams(location.search);
 const root = document.querySelector('#app');
-const nav = [['Komik','/series'], ['Pustaka','/library'], ['Komunitas','/community'], ['Premium','/premium']];
+const nav = [['Komik', '/series'], ['Pustaka', '/library'], ['Komunitas', '/community'], ['Premium', '/premium']];
 const svg = path => `<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
 const searchIcon = svg('<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>');
 const chatIcon = svg('<path d="M20 11.5a8 8 0 0 1-8 8 8 8 0 0 1-3.4-.8L4 20l1.3-4.6A8 8 0 1 1 20 11.5Z"/>');
-const userIcon = svg('<circle cx="12" cy="8" r="3"/><path d="M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/>');
-const mark = `<a class="brand" href="/" aria-label="Shinigami Lab, beranda">${svg('<path d="m12 2 8 10-8 10-8-10zM2 12h20M12 2v20"/>')}<span>SHINIGAMI <b>LAB</b></span></a>`;
+const bellIcon = svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>');
+const mark = `<a class="brand" href="/" aria-label="Shinigami S1, beranda">${svg('<circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01M8.5 15c1 1 2.2 1.5 3.5 1.5s2.5-.5 3.5-1.5"/>')}<span>SHINIGAMI</span><b>S1</b></a>`;
 const appUrl = location.pathname.replace(/\/+$/, '') || '/';
 const idPattern = /^[a-z0-9-]{1,80}$/;
 const strings = (candidate, limit = Infinity) => Array.isArray(candidate) ? candidate.filter(x => typeof x === 'string').slice(0, limit) : [];
@@ -29,7 +29,14 @@ function load() {
     replies: records(s.replies, x => idPattern.test(x.topic)),
     chat: records(s.chat, x => idPattern.test(x.id) && idPattern.test(x.room)),
     name: typeof s.name === 'string' && s.name.trim() ? s.name.trim().slice(0, 36) : defaults.name,
-    prefs: { wide: s.prefs?.wide === true, alerts: s.prefs?.alerts !== false, taste: types.includes(s.prefs?.taste) ? s.prefs.taste : '' },
+    prefs: {
+      wide: s.prefs?.wide === true,
+      alerts: s.prefs?.alerts !== false,
+      taste: types.includes(s.prefs?.taste) ? s.prefs.taste : '',
+      mode: ['Gulir', 'Halaman', 'Dua halaman'].includes(s.prefs?.mode) ? s.prefs.mode : 'Gulir',
+      autonext: s.prefs?.autonext === true,
+      genres: strings(s.prefs?.genres, 20).filter(g => allGenres.includes(g)),
+    },
   };
 }
 const state = load();
@@ -40,14 +47,16 @@ function save() {
 function notice(text) { if (state.prefs.alerts) state.notices = [text, ...state.notices].slice(0, 30); }
 function announce(message) { const status = document.querySelector('#status'); if (status) status.textContent = message; }
 function navLink([label, href]) {
-  const selected = appUrl === href || appUrl.startsWith(`${href}/`);
+  const selected = appUrl === href || appUrl.startsWith(`${href}/`) || (href === '/series' && appUrl.startsWith('/chapter/'));
   return `<a href="${href}"${selected ? ' aria-current="page"' : ''}>${label}</a>`;
 }
 function header() {
-  return `<header class="site-header"><div class="masthead">${mark}<nav class="site-nav" aria-label="Navigasi utama">${nav.map(navLink).join('')}</nav><div class="tools"><button class="icon" data-dialog="search" aria-label="Cari">${searchIcon}</button><a class="icon chat-link" href="/community/chat" aria-label="Ruang obrolan">${chatIcon}</a><details class="user-menu"><summary class="icon" aria-label="Menu pengguna">${userIcon}</summary><nav class="surface" aria-label="Menu pengguna"><a href="/user/me">Profil</a><a href="/notifikasi">Notifikasi${state.prefs.alerts && state.notices.length ? ` (${state.notices.length})` : ''}</a><a href="/settings">Pengaturan</a><a href="/onboarding">Mulai demo</a></nav></details></div></div></header>`;
+  const userInitials = (state.name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('') || 'HL').toUpperCase();
+  const hasNotices = state.prefs.alerts && state.notices.length > 0;
+  return `<header class="site-header"><div class="masthead">${mark}<nav class="site-nav" aria-label="Navigasi utama">${nav.map(navLink).join('')}</nav><div class="tools"><button class="icon" data-dialog="search" aria-label="Cari">${searchIcon}</button><a class="icon chat-link" href="/community/chat" aria-label="Ruang obrolan">${chatIcon}<span class="dot" aria-hidden="true"></span></a><a class="icon" href="/notifikasi" aria-label="Notifikasi">${bellIcon}${hasNotices ? '<span class="dot" aria-hidden="true"></span>' : ''}</a><details class="user-menu"><summary class="avatar-pill" aria-label="Menu pengguna">${userInitials}</summary><nav class="surface" aria-label="Menu pengguna"><a href="/user/me">Profil</a><a href="/notifikasi">Notifikasi${hasNotices ? ` (${state.notices.length})` : ''}</a><a href="/settings">Pengaturan</a><a href="/sistem-aura">Aura &amp; Badge</a><a href="/panduan">Panduan</a><a href="/onboarding">Mulai demo</a></nav></details></div></div></header>`;
 }
 function footer() {
-  return `<footer class="site-footer"><div class="foot-grid"><div>${mark}<p>Katalog dan pembaca komik lokal. Semua cerita dan ilustrasi dibuat untuk demo ini.</p></div><nav aria-label="Jelajahi"><strong>Jelajahi</strong><a href="/series">Komik</a><a href="/library">Pustaka</a><a href="/community">Komunitas</a><a href="/leaderboard">Leaderboard</a></nav><nav aria-label="Akun"><strong>Akun</strong><a href="/premium">Premium</a><a href="/user/me">Profil</a><a href="/settings">Pengaturan</a></nav><nav aria-label="Bantuan"><strong>Bantuan</strong><a href="/sistem-aura">Aura &amp; Badge</a><a href="/panduan">Panduan</a></nav></div><div class="foot-end"><span>Shinigami Lab · replika lokal independen</span><a href="#top">Kembali ke atas</a></div></footer>`;
+  return `<footer class="site-footer"><div class="foot-grid"><div>${mark}<p>Baca manga, manhwa, dan manhua terbaru. Simpan bacaan di Pustaka dan ngobrol bareng di Komunitas.</p></div><nav aria-label="Jelajahi"><strong>Jelajahi</strong><a href="/series">Komik</a><a href="/library">Pustaka</a><a href="/community">Komunitas</a><a href="/leaderboard">Leaderboard</a></nav><nav aria-label="Akun"><strong>Akun</strong><a href="/premium">Premium</a><a href="/user/me">Profil</a><a href="/settings">Pengaturan</a></nav><nav aria-label="Bantuan"><strong>Bantuan</strong><a href="/sistem-aura">Aura &amp; Badge</a><a href="/panduan">Panduan</a></nav></div><div class="foot-end"><span>© 2026 Shinigami Lab · replika lokal independen</span><a href="#top">Kembali ke atas</a></div></footer>`;
 }
 function modal() {
   return `<dialog id="search" aria-labelledby="search-title"><div class="dialog-heading"><h2 id="search-title">Cari komik</h2><form method="dialog"><button aria-label="Tutup pencarian">×</button></form></div><form action="/series"><label class="sr-only" for="quick-search">Judul komik</label><input type="search" name="q" id="quick-search" maxlength="100" placeholder="Masukkan judul…" autofocus></form><div id="search-results" class="stack" aria-live="polite"></div></dialog>
@@ -94,7 +103,7 @@ const content = resolve();
 const reader = appUrl.startsWith('/chapter/');
 root.innerHTML = `<div id="top"></div>${header()}<main id="main" class="${appUrl === '/' ? 'home' : 'page'}" tabindex="-1">${content(state, query)}</main>${reader ? '' : footer()}${modal()}<div id="status" role="status" class="sr-only"></div>`;
 const h1 = document.querySelector('main h1');
-if (h1 && appUrl !== '/') document.title = `${h1.textContent} · Shinigami Lab`;
+if (h1 && appUrl !== '/') document.title = `${h1.textContent} · Shinigami`;
 
 function searchResults() {
   const input = document.querySelector('#quick-search');
@@ -114,6 +123,11 @@ root.addEventListener('click', event => {
   const menu = document.querySelector('.user-menu');
   if (menu.open && !menu.contains(event.target)) menu.open = false;
   if (!button) return;
+  if (button.hasAttribute('data-toggle-composer')) {
+    const composer = document.querySelector('#post-composer');
+    if (composer) { composer.open = !composer.open; composer.querySelector('input')?.focus(); }
+    return;
+  }
   const { rail, slide, dialog, toggle, clear, id } = button.dataset;
   if (rail) document.querySelector('.rank-track').scrollBy({ left: Number(rail) * 372, behavior: 'auto' });
   if (slide) moveHero(Number(slide));
@@ -135,6 +149,9 @@ root.addEventListener('click', event => {
   }
 });
 document.querySelector('#quick-search').addEventListener('input', searchResults);
+root.addEventListener('change', event => {
+  if (event.target.matches('[data-auto-submit]')) event.target.form?.submit();
+});
 root.addEventListener('submit', event => {
   const form = event.target;
   const { form: kind, id } = form.dataset;
@@ -166,9 +183,16 @@ root.addEventListener('submit', event => {
       if (!name) { announce('Nama tampilan tidak boleh kosong.'); return; }
       state.name = name;
     }
-    if (id === 'baca') state.prefs.wide = formData.has('wide');
+    if (id === 'baca') {
+      state.prefs.wide = formData.has('wide');
+      state.prefs.autonext = formData.has('autonext');
+      state.prefs.mode = String(formData.get('mode') ?? 'Gulir');
+    }
     if (id === 'notifikasi') state.prefs.alerts = formData.has('alerts');
-    if (id === 'selera') state.prefs.taste = String(formData.get('taste'));
+    if (id === 'selera') {
+      state.prefs.taste = String(formData.get('taste') ?? '');
+      state.prefs.genres = formData.getAll('genres').map(String);
+    }
     destination = kind === 'onboarding' ? (id === 'akun' ? '/onboarding/selera' : '/user/me') : '';
   }
   if (!save()) return;

@@ -1,24 +1,25 @@
 const entries = [
-  ['pedang-senja', 'Pendekar Pedang Senja', 'Manhwa', 'Aksi', 9.4, 'Perjalanan pendekar penjaga jalur badai dimulai saat senja tidak lagi berakhir.', '#811d35', '#dba9b8'],
-  ['naga-bara', 'Takhta Naga Bara', 'Manhua', 'Fantasi', 9.1, 'Lentera yang dipinjamnya dari seekor naga ternyata bisa menerangi masa depan.', '#a53713', '#ffb747'],
-  ['pewaris-kota', 'Pewaris Kota Ketiga', 'Manhwa', 'Drama', 8.8, 'Setelah tiga kota bersatu, pewaris termuda menemukan nama yang dihapus dari peta.', '#53446a', '#d7b568'],
-  ['kontrak-hujan', 'Kontrak di Bawah Hujan', 'Manga', 'Misteri', 8.7, 'Seorang kurir harus mengembalikan surat yang tidak pernah ditulis oleh pengirimnya.', '#571d33', '#f5cdd3'],
-  ['penjaga-rimba', 'Penjaga Rimba Abadi', 'Manhua', 'Fantasi', 8.6, 'Ada pohon yang mengingat setiap langkah kaki, kecuali langkah satu orang pengembara.', '#3d5127', '#ffd27d'],
-  ['petarung-fajar', 'Petarung Fajar Kedua', 'Manhwa', 'Aksi', 8.5, 'Untuk merebut hari esok, seorang pendekar harus kembali ke hari pertamanya berlatih.', '#472272', '#a6a7fe'],
-  ['jalan-bulan', 'Jalan Menuju Bulan Utara', 'Manga', 'Petualangan', 8.5, 'Sebuah kereta terakhir membawa tiga penumpang ke kota yang hanya muncul tengah malam.', '#244a5f', '#9be1e6'],
-  ['bintang-bisu', 'Pedang Bintang Bisu', 'Manhwa', 'Aksi', 9.0, 'Sang pandai besi menyimpan cahaya bintang terakhir di dalam bilah yang belum selesai.', '#50363e', '#f0b88f'],
-  ['taman-kaca', 'Taman Kaca dan Bayangan', 'Manga', 'Misteri', 8.2, 'Di balik setiap kaca rumah tua itu, selalu ada satu bayangan tambahan.', '#24575d', '#bfe2ce'],
-  ['akademi-awan', 'Akademi di Atas Awan', 'Manhua', 'Petualangan', 8.9, 'Murid termuda di akademi udara mendapat tugas memetakan pulau yang terus berpindah.', '#344373', '#a6cdf6'],
-  ['hari-kilat', 'Hari Ketika Kilat Turun', 'Manhwa', 'Aksi', 8.4, 'Peti berisi guntur terjatuh tepat di hadapan pemburu barang antik.', '#643713', '#ffd18e'],
-  ['perpustakaan-malam', 'Perpustakaan Tengah Malam', 'Manga', 'Drama', 8.8, 'Seorang pustakawan membuka buku yang menjawab pertanyaan sebelum ditulis.', '#35415d', '#a7b8e9'],
+  ['pedang-senja', 'Pendekar Pedang Senja', 'Manhwa', 'Aksi', 'Ongoing', 45, 93423, '3 jam', 9.4, 'Perjalanan pendekar penjaga jalur badai dimulai saat senja tidak lagi berakhir dan gerbang utara terbuka.', '#811d35', '#dba9b8'],
+  ['naga-bara', 'Takhta Naga Bara', 'Manhua', 'Fantasi', 'Ongoing', 151, 34782, '3 jam', 9.1, 'Lentera yang dipinjamnya dari seekor naga ternyata bisa menerangi masa depan kerajaan yang runtuh.', '#a53713', '#ffb747'],
+  ['pewaris-kota', 'Pewaris Kota Ketiga', 'Manhwa', 'Drama', 'Ongoing', 163, 18547, '4 jam', 8.8, 'Setelah tiga kota bersatu, pewaris termuda menemukan namanya dihapus dari peta kekaisaran.', '#53446a', '#d7b568'],
+  ['kontrak-hujan', 'Kontrak di Bawah Hujan', 'Manga', 'Misteri', 'Ongoing', 436, 7839, '6 jam', 8.7, 'Seorang kurir harus mengembalikan surat yang tidak pernah ditulis oleh pengirimnya sebelum tengah malam.', '#571d33', '#f5cdd3'],
+  ['penjaga-rimba', 'Penjaga Rimba Abadi', 'Manhua', 'Fantasi', 'Ongoing', 591, 8546, '12 jam', 8.6, 'Ada pohon yang mengingat setiap langkah kaki, kecuali langkah satu orang pengembara dari selatan.', '#3d5127', '#ffd27d'],
+  ['petarung-fajar', 'Petarung Fajar Kedua', 'Manhwa', 'Aksi', 'Ongoing', 1585, 3110, '1 hr', 8.5, 'Untuk merebut hari esok, seorang pendekar harus kembali ke hari pertamanya berlatih di lembah sunyi.', '#472272', '#a6a7fe'],
+  ['jalan-bulan', 'Jalan Menuju Bulan Utara', 'Manga', 'Petualangan', 'Completed', 612, 12490, '1 hr', 8.5, 'Sebuah kereta terakhir membawa tiga penumpang ke kota yang hanya muncul saat bulan purnama.', '#244a5f', '#9be1e6'],
+  ['bintang-bisu', 'Pedang Bintang Bisu', 'Manhwa', 'Aksi', 'Ongoing', 209, 27640, '2 hr', 9.0, 'Sang pandai besi menyimpan cahaya bintang terakhir di dalam bilah pedang yang belum selesai ditempa.', '#50363e', '#f0b88f'],
+  ['taman-kaca', 'Taman Kaca dan Bayangan', 'Manga', 'Misteri', 'Ongoing', 842, 5410, '3 hr', 8.2, 'Di balik setiap kaca rumah tua itu, selalu ada satu bayangan tambahan yang meniru gerak pemiliknya.', '#24575d', '#bfe2ce'],
+  ['akademi-awan', 'Akademi di Atas Awan', 'Manhua', 'Petualangan', 'Ongoing', 318, 19230, '3 hr', 8.9, 'Murid termuda di akademi udara mendapat tugas memetakan pulau yang terus berpindah mengikuti angin.', '#344373', '#a6cdf6'],
+  ['hari-kilat', 'Hari Ketika Kilat Turun', 'Manhwa', 'Aksi', 'Ongoing', 715, 9870, '6 hr', 8.4, 'Peti berisi guntur terjatuh tepat di hadapan pemburu barang antik di pelabuhan tua.', '#643713', '#ffd18e'],
+  ['perpustakaan-malam', 'Perpustakaan Tengah Malam', 'Manga', 'Drama', 'Completed', 504, 15320, '1 minggu', 8.8, 'Seorang pustakawan membuka buku yang menuliskan jawaban sebelum pertanyaan sempat terucap.', '#35415d', '#a7b8e9'],
 ];
 const chapterTitles = ['Jalan pulang', 'Tanda di cakrawala', 'Percakapan yang tertunda'];
-export const comics = entries.map(([id, title, type, genre, rating, summary, base, ink], index) => ({
-  id, title, type, genre, rating, summary, base, ink, index,
-  chapters: chapterTitles.map((title, i) => ({ id: `${id}-${i + 1}`, number: i + 1, title })),
+export const comics = entries.map(([id, title, type, genre, status, rank, followers, updated, rating, summary, base, ink], index) => ({
+  id, title, type, genre, status, rank, followers, updated, rating, summary, base, ink, index,
+  chapters: chapterTitles.map((chapterTitle, i) => ({ id: `${id}-${i + 1}`, number: i + 1, title: chapterTitle })),
 }));
 export const types = ['Manhwa', 'Manhua', 'Manga'];
 export const genres = [...new Set(comics.map(comic => comic.genre))].sort();
+export const allGenres = ['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Historical', 'Horror', 'Isekai', 'Magic', 'Martial Arts', 'Murim', 'Mystery', 'Psychological', 'Romance', 'Sci-fi', 'Slice of Life', 'Supernatural', 'Thriller', 'Wuxia'];
 export const seriesUrl = comic => `/series/${comic.id}`;
 export const chapterUrl = chapter => `/chapter/${chapter.id}`;
 export const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
