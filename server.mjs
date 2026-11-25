@@ -5,6 +5,9 @@ import { extname } from 'node:path';
 const assets = new Map([
   ['/styles.css', 'text/css'], ['/app.js', 'text/javascript'],
   ['/catalog.js', 'text/javascript'], ['/pages.js', 'text/javascript'],
+  ['/favicon.svg', 'image/svg+xml'],
+  ['/komik-mirror-lockup.svg', 'image/svg+xml'],
+  ['/komik-mirror-mark.svg', 'image/svg+xml'],
 ]);
 const html = await readFile(new URL('./index.html', import.meta.url));
 const files = new Map(await Promise.all([...assets].map(async ([name, type]) => [
@@ -82,5 +85,5 @@ createServer(async (req, res) => {
     'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   }).end(req.method === 'HEAD' ? undefined : asset?.body ?? html);
 }).listen(Number(process.env.PORT ?? 4173), '127.0.0.1', function () {
-  console.log(`Shinigami Lab: http://127.0.0.1:${this.address().port}`);
+  console.log(`Komik Mirror: http://127.0.0.1:${this.address().port}`);
 });

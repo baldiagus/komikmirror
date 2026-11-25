@@ -10,7 +10,7 @@ const defaults = {
 const query = new URLSearchParams(location.search);
 const root = document.querySelector('#app');
 const nav = [['Komik', '/series'], ['Pustaka', '/library'], ['Komunitas', '/community'], ['Premium', '/premium']];
-const mark = `<a class="brand" href="/" aria-label="Shinigami S1, beranda">${icon('brand', 18)}<span>Shinigami</span><span class="brand-tag">S1</span></a>`;
+const mark = `<a class="brand" href="/" aria-label="Komik Mirror, beranda"><img class="brand-logo" src="/komik-mirror-lockup.svg" alt="" width="500" height="216" decoding="async"></a>`;
 const appUrl = location.pathname.replace(/\/+$/, '') || '/';
 const idPattern = /^[a-z0-9-]{1,80}$/;
 const strings = (candidate, limit = Infinity) => Array.isArray(candidate) ? candidate.filter(x => typeof x === 'string').slice(0, limit) : [];
@@ -64,7 +64,7 @@ function header() {
   return `<header class="site-header"><div class="masthead">${mark}<nav class="site-nav" aria-label="Navigasi utama">${nav.map(navLink).join('')}</nav><div class="tools"><button class="icon" data-dialog="search" aria-label="Cari">${icon('search', 18)}</button><a class="icon chat-link" href="/community/chat" aria-label="Ruang obrolan">${icon('chat', 18)}</a><a class="icon" href="/notifikasi" aria-label="Notifikasi">${icon('bell', 18)}${unreadCount ? '<span class="dot" aria-hidden="true"></span>' : ''}</a><details class="user-menu"><summary class="avatar-pill" aria-label="Menu pengguna">${userInitials}</summary><nav class="surface" aria-label="Menu pengguna"><a href="/user/me">Profil</a><a href="/notifikasi">Notifikasi${unreadCount ? ` (${unreadCount})` : ''}</a><a href="/settings">Pengaturan</a><a href="/sistem-aura">Aura &amp; Badge</a><a href="/panduan">Panduan</a><a href="/onboarding">Mulai demo</a></nav></details></div></div></header>`;
 }
 function footer() {
-  return `<footer class="site-footer"><div class="foot-grid"><div>${mark}<p>Baca manga, manhwa, dan manhua terbaru. Simpan bacaan di Pustaka dan ngobrol bareng di Komunitas.</p></div><nav aria-label="Jelajahi"><strong>Jelajahi</strong><a href="/series">Komik</a><a href="/library">Pustaka</a><a href="/community">Komunitas</a><a href="/leaderboard">Leaderboard</a></nav><nav aria-label="Akun"><strong>Akun</strong><a href="/premium">Premium</a><a href="/user/me">Profil</a><a href="/settings">Pengaturan</a></nav><nav aria-label="Bantuan"><strong>Bantuan</strong><a href="/sistem-aura">Aura &amp; Badge</a><a href="/panduan">Panduan</a></nav></div><div class="foot-end"><span>Shinigami Lab · replika lokal</span><a href="#top">Kembali ke atas</a></div></footer>`;
+  return `<footer class="site-footer"><div class="foot-grid"><div>${mark}<p>Baca manga, manhwa, dan manhua terbaru. Simpan bacaan di Pustaka dan ngobrol bareng di Komunitas.</p></div><nav aria-label="Jelajahi"><strong>Jelajahi</strong><a href="/series">Komik</a><a href="/library">Pustaka</a><a href="/community">Komunitas</a><a href="/leaderboard">Leaderboard</a></nav><nav aria-label="Akun"><strong>Akun</strong><a href="/premium">Premium</a><a href="/user/me">Profil</a><a href="/settings">Pengaturan</a></nav><nav aria-label="Bantuan"><strong>Bantuan</strong><a href="/sistem-aura">Aura &amp; Badge</a><a href="/panduan">Panduan</a></nav></div><div class="foot-end"><span>Komik Mirror · replika lokal Shinigami</span><a href="#top">Kembali ke atas</a></div></footer>`;
 }
 function modal() {
   return `<dialog id="search" aria-labelledby="search-title"><div class="dialog-heading"><h2 id="search-title">Cari komik</h2><form method="dialog"><button class="icon" aria-label="Tutup pencarian">${icon('close', 16)}</button></form></div><form action="/series"><label class="sr-only" for="quick-search">Judul komik</label><input type="search" name="q" id="quick-search" maxlength="100" placeholder="Masukkan judul" autofocus></form><div id="search-results" class="stack" aria-live="polite"></div></dialog>
@@ -111,7 +111,7 @@ const content = resolve();
 const reader = appUrl.startsWith('/chapter/');
 root.innerHTML = `<div id="top"></div>${header()}<main id="main" class="${appUrl === '/' ? 'home' : 'page'}" tabindex="-1">${content(state, query)}</main>${reader ? '' : footer()}${modal()}<div id="status" role="status" class="sr-only"></div>`;
 const h1 = document.querySelector('main h1');
-if (h1 && appUrl !== '/') document.title = `${h1.textContent} · Shinigami`;
+if (h1 && appUrl !== '/') document.title = `${h1.textContent} · Komik Mirror`;
 const panelBox = document.querySelector('#chapter-panels');
 if (panelBox) {
   const chapterId = panelBox.dataset.chapterId;

@@ -56,8 +56,9 @@ summary { cursor: pointer; }
 .skip:focus { position: fixed; z-index: 20; top: 8px; left: 8px; background: var(--text); color: var(--bg); padding: 8px 12px; border-radius: 6px; }
 .site-header { position: sticky; inset-block-start: 0; z-index: 10; background: rgba(15, 15, 16, 0.92); backdrop-filter: blur(8px); border-block-end: 1px solid var(--line); }
 .masthead { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; max-width: calc(var(--max) + 2 * var(--gutter)); margin-inline: auto; padding-inline: var(--gutter); min-height: 56px; }
-.brand { display: inline-flex; align-items: center; justify-self: start; gap: 8px; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
-.brand-tag { color: var(--text-2); background: var(--raised); border: 1px solid var(--line); border-radius: 4px; font-size: 11px; font-weight: 500; padding: 2px 6px; letter-spacing: 0.01em; }
+.brand { display: inline-flex; align-items: center; justify-self: start; flex-shrink: 0; border-radius: 6px; transition: opacity 150ms var(--ease); }
+.brand:hover { opacity: 0.9; }
+.brand-logo { display: block; height: 36px; width: auto; }
 .site-nav, .tools, .tabs, .actions, .rail-actions { display: flex; align-items: center; gap: 8px; }
 .site-nav { gap: 20px; }
 .site-nav a { position: relative; display: inline-flex; align-items: center; min-height: 56px; padding-inline: 4px; font-size: 14px; font-weight: 500; color: var(--muted); }
@@ -255,6 +256,7 @@ summary { cursor: pointer; }
 .foot-grid nav { display: grid; align-content: start; gap: 4px; }
 .foot-grid nav a { min-height: 36px; display: inline-flex; align-items: center; }
 .foot-grid strong, .foot-grid .brand { color: var(--text); }
+.foot-grid .brand-logo { height: 40px; }
 .foot-grid p { margin-top: 12px; max-width: 35ch; }
 .foot-end { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-block: 16px; border-top: 1px solid var(--line); }
 dialog { width: min(calc(100% - 32px), 544px); border: 1px solid var(--line-hi); border-radius: 16px; padding: 20px; background: var(--card); color: var(--text); }
@@ -267,7 +269,8 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.72); }
 }
 @media (max-width: 740px) {
   :root { --gutter: 16px; }
-  .masthead { grid-template-columns: 1fr auto; }
+  .masthead { grid-template-columns: 1fr auto; padding-block-start: 6px; }
+  .brand-logo { height: 32px; }
   .site-nav { grid-row: 2; grid-column: 1 / -1; justify-content: space-between; overflow-x: auto; gap: 8px; }
   .site-nav a { min-height: 44px; padding-inline: 8px; white-space: nowrap; }
   .tools { grid-column: 2; grid-row: 1; }
