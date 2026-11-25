@@ -13,10 +13,25 @@ const entries = [
   ['perpustakaan-malam', 'Perpustakaan Tengah Malam', 'Manga', 'Drama', 'Completed', 504, 15320, '1 minggu', 8.8, 'Seorang pustakawan membuka buku yang menuliskan jawaban sebelum pertanyaan sempat terucap.', '#35415d', '#a7b8e9'],
 ];
 const chapterTitles = ['Jalan pulang', 'Tanda di cakrawala', 'Percakapan yang tertunda'];
-export const comics = entries.map(([id, title, type, genre, status, rank, followers, updated, rating, summary, base, ink], index) => ({
+const fallbackComics = entries.map(([id, title, type, genre, status, rank, followers, updated, rating, summary, base, ink], index) => ({
   id, title, type, genre, status, rank, followers, updated, rating, summary, base, ink, index,
   chapters: chapterTitles.map((chapterTitle, i) => ({ id: `${id}-${i + 1}`, number: i + 1, title: chapterTitle })),
 }));
+const palettes = entries.map(([, , , , , , , , , , base, ink]) => [base, ink]);
+let scraped = [];
+try {
+  const res = await fetch('/data/catalog.json');
+  if (res.ok) scraped = await res.json();
+} catch {}
+export const comics = Array.isArray(scraped) && scraped.length
+  ? scraped.map((item, index) => ({
+      ...item,
+      index,
+      base: palettes[index % palettes.length][0],
+      ink: palettes[index % palettes.length][1],
+      chapters: Array.isArray(item.chapters) && item.chapters.length ? item.chapters : [{ id: `${item.id}-1`, number: 1, title: 'Chapter 1' }],
+    }))
+  : fallbackComics;
 export const types = ['Manhwa', 'Manhua', 'Manga'];
 export const genres = [...new Set(comics.map(comic => comic.genre))].sort();
 export const allGenres = ['Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Historical', 'Horror', 'Isekai', 'Magic', 'Martial Arts', 'Murim', 'Mystery', 'Psychological', 'Romance', 'Sci-fi', 'Slice of Life', 'Supernatural', 'Thriller', 'Wuxia'];
@@ -25,6 +40,7 @@ export const chapterUrl = chapter => `/chapter/${chapter.id}`;
 export const escape = value => String(value).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 export function artwork(comic, panel = 0) {
+  if (panel === 0 && comic.coverUrl) return comic.coverUrl;
   const { base, ink, index, title } = comic;
   const horizon = 170 + ((index * 41 + panel * 67) % 155);
   const moon = 56 + (index * 41 + panel * 53) % 188;
