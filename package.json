@@ -1,0 +1,46 @@
+{
+  "name": "komik-mirror",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3000",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1 --port 3000",
+    "typecheck": "tsc --noEmit",
+    "legacy:dev": "node server.mjs",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "auth:schema": "auth generate --config src/lib/auth.ts --output src/db/schema/auth.ts --yes",
+    "admin:promote": "tsx scripts/promote-admin.ts",
+    "admin:create-user": "tsx scripts/create-user.ts",
+    "import:snapshot": "tsx scripts/import-snapshot.ts",
+    "import:dry-run": "tsx scripts/import-snapshot.ts --dry-run",
+    "backup": "node scripts/backup.mjs",
+    "restore": "node scripts/restore.mjs",
+    "test:integration": "node --conditions=react-server --import tsx --test tests/integration/*.test.ts",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "better-auth": "1.7.28",
+    "dotenv": "^16.5.0",
+    "drizzle-orm": "0.45.4",
+    "mysql2": "^3.14.1",
+    "next": "16.4.6",
+    "nodemailer": "^7.0.3",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "server-only": "^0.0.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "auth": "1.7.28",
+    "@playwright/test": "1.65.1",
+    "@types/node": "^22.15.3",
+    "@types/nodemailer": "^6.4.17",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "drizzle-kit": "0.31.11",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

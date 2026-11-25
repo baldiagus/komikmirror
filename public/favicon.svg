@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="title">
+  <title id="title">Komik Mirror</title>
+  <rect x="4" y="4" width="248" height="248" rx="44" fill="#141415" stroke="#2c2c30" stroke-width="8"/>
+  <g transform="translate(10.24,10.24) scale(0.92)">
+    <path fill="#ededed" d="M24 24 L118 24 L118 89.32 L24 143.59 Z"/>
+    <path fill="#f59e0b" fill-rule="evenodd" d="M24 166.68 L118 112.41 L118 232 L24 232 Z M44 212 L98 212 L98 147.05 L44 178.23 Z"/>
+    <path fill="#f59e0b" fill-rule="evenodd" d="M232 143.59 L138 89.32 L138 24 L232 24 Z M212 44 L158 44 L158 77.77 L212 108.95 Z"/>
+    <path fill="#ededed" d="M232 232 L138 232 L138 112.41 L232 166.68 Z"/>
+  </g>
+</svg>

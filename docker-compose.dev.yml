@@ -1,0 +1,18 @@
+# Local development override: hot reload + Mailpit profile
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml --profile dev up
+
+services:
+  web:
+    build:
+      context: .
+      target: deps
+    command: ["npx", "next", "dev", "--hostname", "0.0.0.0", "--port", "3000"]
+    environment:
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./next.config.ts:/app/next.config.ts:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - media_data:/var/lib/komik-mirror/media

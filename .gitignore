@@ -1,2 +1,14 @@
 data/
 node_modules/
+.next/
+.env
+.env.local
+.env.test
+.env.production
+playwright-report/
+test-results/
+backups/
+tmp-media/
+*.log
+tsconfig.tsbuildinfo
+next-env.d.ts
