@@ -1,19 +1,54 @@
-import { mkdir, writeFile } from 'node:fs/promises';
-import { setTimeout as delay } from 'node:timers/promises';
+import { access, mkdir, writeFile } from 'node:fs/promises';
+import { extname } from 'node:path';
 
 const headers = {
   Accept: 'application/json',
   Origin: 'https://s1.shinigami.mx',
   Referer: 'https://s1.shinigami.mx/',
 };
-const res = await fetch('https://api.shinigami.io/v1/manga/list?sort=latest&sort_order=desc&offset=0&limit=24', { headers });
-if (!res.ok) throw new Error(`HTTP ${res.status}`);
-const payload = await res.json();
-const items = [];
+const panelLimit = Number(process.argv.find(a => a.startsWith('--panels='))?.split('=')[1] ?? 24);
 
-for (const item of payload.data ?? []) {
-  const chRes = await fetch(`https://api.shinigami.io/v1/chapter/${item.manga_id}/list?page=1&page_size=20&sort_by=chapter_number&sort_order=desc`, { headers });
-  const chJson = chRes.ok ? await chRes.json().catch(() => null) : null;
+async function exists(path) {
+  try { await access(path); return true; } catch { return false; }
+}
+
+async function downloadFile(url, dest) {
+  if (!url || await exists(dest)) return true;
+  const res = await fetch(url, { headers: { Referer: 'https://s1.shinigami.mx/' } }).catch(() => null);
+  if (!res?.ok) return false;
+  await writeFile(dest, Buffer.from(await res.arrayBuffer()));
+  return true;
+}
+
+async function pool(list, concurrency, fn) {
+  let i = 0;
+  await Promise.all(Array.from({ length: concurrency }, async () => {
+    while (i < list.length) {
+      const idx = i++;
+      await fn(list[idx], idx);
+    }
+  }));
+}
+
+await mkdir('data/media/covers', { recursive: true });
+await mkdir('data/media/chapters', { recursive: true });
+
+const rawItems = [];
+for (let offset = 0; ; ) {
+  const res = await fetch(`https://api.shinigami.io/v1/manga/list?sort=latest&sort_order=desc&offset=${offset}&limit=100`, { headers });
+  if (!res.ok) throw new Error(`Catalog HTTP ${res.status}`);
+  const payload = await res.json();
+  const batch = payload.data ?? [];
+  rawItems.push(...batch);
+  if (!payload.meta?.has_next || batch.length === 0) break;
+  offset += batch.length;
+}
+console.log(`Fetched ${rawItems.length} catalog entries`);
+
+const items = new Array(rawItems.length);
+await pool(rawItems, 8, async (item, idx) => {
+  const chRes = await fetch(`https://api.shinigami.io/v1/chapter/${item.manga_id}/list?page=1&page_size=20&sort_by=chapter_number&sort_order=desc`, { headers }).catch(() => null);
+  const chJson = chRes?.ok ? await chRes.json().catch(() => null) : null;
   const chapters = (chJson?.data ?? [])
     .map(ch => ({
       id: ch.chapter_id,
@@ -22,7 +57,12 @@ for (const item of payload.data ?? []) {
     }))
     .reverse();
 
-  items.push({
+  const remoteCover = item.cover_portrait_url || item.cover_image_url || '';
+  const coverExt = extname(remoteCover.split('?')[0]) || '.webp';
+  const localCoverRel = `data/media/covers/${item.manga_id}${coverExt}`;
+  const coverOk = await downloadFile(remoteCover, localCoverRel);
+
+  items[idx] = {
     id: item.manga_id,
     title: item.title,
     type: item.country_id === 'CN' ? 'Manhua' : item.country_id === 'JP' ? 'Manga' : 'Manhwa',
@@ -34,12 +74,28 @@ for (const item of payload.data ?? []) {
     rating: Number(item.user_rate ?? 0),
     summary: (item.description ?? '').trim(),
     latestChapterNumber: item.latest_chapter_number ?? (chapters.at(-1)?.number || 1),
-    coverUrl: item.cover_portrait_url || item.cover_image_url || '',
+    coverUrl: coverOk ? `/media/covers/${item.manga_id}${coverExt}` : remoteCover,
     chapters: chapters.length ? chapters : [{ id: `${item.manga_id}-1`, number: 1, title: 'Chapter 1' }],
-  });
-  await delay(120);
-}
+  };
+});
 
-await mkdir('data', { recursive: true });
+let panelCount = 0;
+const panelTargets = items.slice(0, panelLimit).map(c => c.chapters.at(-1)).filter(c => c && /^[0-9a-f-]{36}$/.test(c.id));
+await pool(panelTargets, 4, async ch => {
+  const dir = `data/media/chapters/${ch.id}`;
+  await mkdir(dir, { recursive: true });
+  const r = await fetch(`https://api.shinigami.io/v1/chapter/detail/${ch.id}`, { headers }).catch(() => null);
+  const j = r?.ok ? await r.json().catch(() => null) : null;
+  const d = j?.data;
+  const base = d?.base_url?.replace(/\/?$/, '/');
+  const prefix = d?.chapter?.path?.replace(/^\/+/, '') ?? '';
+  if (!base || !Array.isArray(d?.chapter?.data)) return;
+  await Promise.all(d.chapter.data.map(async (name, n) => {
+    const ext = extname(name) || '.webp';
+    const file = `${dir}/${String(n + 1).padStart(3, '0')}${ext}`;
+    if (await downloadFile(new URL(prefix + name, base).href, file)) panelCount++;
+  }));
+});
+
 await writeFile('data/catalog.json', JSON.stringify(items, null, 2));
-console.log(`Saved ${items.length} comics with chapters to data/catalog.json`);
+console.log(`Saved ${items.length} comics, local covers, and ${panelCount} chapter panels`);

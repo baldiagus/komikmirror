@@ -90,7 +90,7 @@ export function home(state, query) {
     <section class="rank-section"><h2 class="sr-only">Peringkat komik</h2>${tabLinks(groups, active, i => { const q = new URLSearchParams(query); q.set('rank', i); return `/?${e(q)}#rank`; })}
     <div id="rank" class="rank-track" tabindex="0" aria-label="Daftar peringkat">${ranked.slice(0, 9).map((comic, i) => `<a class="rank-card" href="${seriesUrl(comic)}">${cover(comic)}<div class="rank-meta"><b class="${i === 0 ? 'points' : ''}">${i + 1}</b><div><strong>${e(comic.title)}</strong><small>Ch. ${comic.latestChapterNumber ?? comic.chapters.length} · ${e(comic.updated)}</small></div></div></a>`).join('')}</div>
     <div class="rail-actions"><button data-rail="-1" aria-label="Peringkat sebelumnya">${icon('chevLeft')}</button><button data-rail="1" aria-label="Peringkat berikutnya">${icon('chevRight')}</button></div></section>
-    <section id="project"><div class="section-heading"><h2>Project</h2>${tabLinks(['Semua', ...types], filtered, i => { const q = new URLSearchParams(query); q.set('jenis', i); return `/?${e(q)}#project`; })}</div>${tiles(items, true)}</section>`;
+    <section id="project"><div class="section-heading"><h2>Project</h2>${tabLinks(['Semua', ...types], filtered, i => { const q = new URLSearchParams(query); q.set('jenis', i); return `/?${e(q)}#project`; })}</div>${tiles(items.slice(0, 24), true)}</section>`;
 }
 
 export function catalog(state, query) {
@@ -101,6 +101,11 @@ export function catalog(state, query) {
   const list = comics.filter(x => (!type || x.type === type) && (!genre || x.genre === genre) && x.title.toLowerCase().includes(keyword.toLowerCase()));
   if (sort === 'rating') list.sort((a, b) => b.rating - a.rating);
   if (sort === 'name') list.sort((a, b) => a.title.localeCompare(b.title, 'id'));
+  const perPage = 48;
+  const totalPages = Math.max(1, Math.ceil(list.length / perPage));
+  const pageNum = Math.min(totalPages, Math.max(1, Number(query.get('page')) || 1));
+  const pageItems = list.slice((pageNum - 1) * perPage, pageNum * perPage);
+  const pageUrl = p => { const q = new URLSearchParams(query); q.set('page', String(p)); return `/series?${e(q)}`; };
   return `${title('Daftar Komik')}<form class="series-toolbar" action="/series">
     <label class="sr-only" for="series-q">Cari judul manga</label>
     <input id="series-q" name="q" type="search" value="${e(keyword)}" maxlength="100" placeholder="Cari judul manga">
@@ -110,7 +115,8 @@ export function catalog(state, query) {
       <div class="actions"><button class="primary">Terapkan</button>${link('Reset', '/series')}</div></div></details>
     <select name="sort" aria-label="Urutkan" data-auto-submit>${[['', 'Update terbaru'], ['rating', 'Rating tertinggi'], ['name', 'Judul A–Z']].map(([v, t]) => `<option value="${v}"${v === sort ? ' selected' : ''}>${t}</option>`).join('')}</select>
   </form>
-  ${list.length ? `<h2 class="sr-only">Hasil pencarian</h2><div class="series-grid">${list.map(comic => `<a class="surface series-card" href="${seriesUrl(comic)}">${cover(comic)}<div class="series-body"><h3>${e(comic.title)}</h3><p class="meta">${comic.type} · ${comic.status}</p><p class="series-stats"><span class="num">#${comic.rank.toLocaleString('id-ID')}</span><span class="num">${comic.followers.toLocaleString('id-ID')} pengikut</span>${comic.rating > 0 ? `<span class="rate-inline num">${icon('star', 12)} ${comic.rating.toFixed(1)}</span>` : ''}</p><p class="series-excerpt">${e(comic.summary)}</p><p class="series-ch"><strong class="points num">Chapter ${comic.latestChapterNumber ?? comic.chapters.length}</strong> · <span class="meta">${e(comic.updated)}</span></p></div></a>`).join('')}</div>` : box('Tidak ada hasil', 'Coba kata kunci atau filter lain.', link('Lihat semua komik', '/series', 'primary'))}`;
+  <p class="meta num">${list.length.toLocaleString('id-ID')} komik</p>
+  ${pageItems.length ? `<h2 class="sr-only">Hasil pencarian</h2><div class="series-grid">${pageItems.map(comic => `<a class="surface series-card" href="${seriesUrl(comic)}">${cover(comic)}<div class="series-body"><h3>${e(comic.title)}</h3><p class="meta">${comic.type} · ${comic.status}</p><p class="series-stats"><span class="num">#${comic.rank.toLocaleString('id-ID')}</span><span class="num">${comic.followers.toLocaleString('id-ID')} pengikut</span>${comic.rating > 0 ? `<span class="rate-inline num">${icon('star', 12)} ${comic.rating.toFixed(1)}</span>` : ''}</p><p class="series-excerpt">${e(comic.summary)}</p><p class="series-ch"><strong class="points num">Chapter ${comic.latestChapterNumber ?? comic.chapters.length}</strong> · <span class="meta">${e(comic.updated)}</span></p></div></a>`).join('')}</div>${totalPages > 1 ? `<nav class="actions" aria-label="Halaman katalog">${pageNum > 1 ? link(`${icon('chevLeft')} Sebelumnya`, pageUrl(pageNum - 1)) : ''}<span class="meta num">Halaman ${pageNum} dari ${totalPages}</span>${pageNum < totalPages ? link(`Berikutnya ${icon('chevRight')}`, pageUrl(pageNum + 1), 'primary') : ''}</nav>` : ''}` : box('Tidak ada hasil', 'Coba kata kunci atau filter lain.', link('Lihat semua komik', '/series', 'primary'))}`;
 }
 
 export function series(state, query, comic) {
