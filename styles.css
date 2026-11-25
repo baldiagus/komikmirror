@@ -108,12 +108,14 @@ summary { cursor: pointer; }
 .rail-actions button { padding: 0; width: 36px; min-block-size: 36px; color: var(--text-2); }
 .section-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-block: 16px; }
 .section-heading .tabs { margin-bottom: 0; }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 136px), 1fr)); gap: 16px 12px; }
-.tile { min-width: 0; }
-.tile h3 { margin-block: 8px; font-weight: 500; overflow-wrap: anywhere; }
+.grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.tile { min-width: 0; display: flex; flex-direction: column; padding: 8px; border-radius: 12px; }
+.tile .cover { border-radius: 8px; }
+.tile h3 { margin: 8px 0; font-size: 14px; line-height: 1.3; font-weight: 500; min-height: calc(2 * 1.3em); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tile .meta { font-size: 12px; }
-.chapter-pills { display: grid; gap: 4px; }
-.chapter-pills a { min-height: 36px; padding: 0 8px; font-size: 12px; }
+.chapter-pills { display: grid; gap: 4px; margin-top: auto; }
+.chapter-pills a { min-height: 36px; padding: 0 8px; font-size: 12px; justify-content: space-between; border-radius: 6px; }
+@media (max-width: 960px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .meta, .local-note { color: var(--muted); font-size: 13px; }
 .points { color: var(--accent); }
 .surface, .row { border: 1px solid var(--line); border-radius: 12px; background: var(--card); }

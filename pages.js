@@ -71,7 +71,7 @@ const initials = name => (name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).jo
 const ratingBadge = rating => rating > 0 ? `<span class="rating">${icon('star', 12)} ${rating.toFixed(1)}</span>` : '';
 
 function tiles(items, chapters = false) {
-  return `<div class="grid">${items.map(comic => `<article class="tile"><a href="${seriesUrl(comic)}">${cover(comic)}<h3>${e(comic.title)}</h3></a>${chapters ? `<div class="chapter-pills">${comic.chapters.slice(-2).reverse().map(ch => link(`Chapter ${ch.number}`, chapterUrl(ch))).join('')}</div>` : `<p class="meta">${comic.type} · ${e(comic.genre)}${comic.rating > 0 ? ` · <span class="rate-inline">${icon('star', 12)} ${comic.rating.toFixed(1)}</span>` : ''}</p>`}</article>`).join('')}</div>`;
+  return `<div class="grid">${items.map(comic => `<article class="surface tile"><a href="${seriesUrl(comic)}">${cover(comic)}<h3>${e(comic.title)}</h3></a>${chapters ? `<div class="chapter-pills">${comic.chapters.slice(-2).reverse().map(ch => `<a class="chip" href="${chapterUrl(ch)}"><span class="num">Chapter ${ch.number}</span><small class="meta num">${e(comic.updated)}</small></a>`).join('')}</div>` : `<p class="meta">${comic.type} · ${e(comic.genre)}${comic.rating > 0 ? ` · <span class="rate-inline">${icon('star', 12)} ${comic.rating.toFixed(1)}</span>` : ''}</p>`}</article>`).join('')}</div>`;
 }
 
 export function home(state, query) {
@@ -90,7 +90,7 @@ export function home(state, query) {
     <section class="rank-section"><h2 class="sr-only">Peringkat komik</h2>${tabLinks(groups, active, i => { const q = new URLSearchParams(query); q.set('rank', i); return `/?${e(q)}#rank`; })}
     <div id="rank" class="rank-track" tabindex="0" aria-label="Daftar peringkat">${ranked.slice(0, 9).map((comic, i) => `<a class="rank-card" href="${seriesUrl(comic)}">${cover(comic)}<div class="rank-meta"><b class="${i === 0 ? 'points' : ''}">${i + 1}</b><div><strong>${e(comic.title)}</strong><small>Ch. ${comic.latestChapterNumber ?? comic.chapters.length} · ${e(comic.updated)}</small></div></div></a>`).join('')}</div>
     <div class="rail-actions"><button data-rail="-1" aria-label="Peringkat sebelumnya">${icon('chevLeft')}</button><button data-rail="1" aria-label="Peringkat berikutnya">${icon('chevRight')}</button></div></section>
-    <section id="project"><div class="section-heading"><h2>Project</h2>${tabLinks(['Semua', ...types], filtered, i => { const q = new URLSearchParams(query); q.set('jenis', i); return `/?${e(q)}#project`; })}</div>${tiles(items.slice(0, 24), true)}</section>`;
+    <section id="project"><div class="section-heading"><h2>Project</h2>${tabLinks(['Semua', ...types], filtered, i => { const q = new URLSearchParams(query); q.set('jenis', i); return `/?${e(q)}#project`; })}</div>${tiles(items.slice(0, 20), true)}</section>`;
 }
 
 export function catalog(state, query) {
