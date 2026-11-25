@@ -140,7 +140,7 @@ export function reader(state, query, comic, chapter) {
   const heading = chapter.title && chapter.title !== `Chapter ${chapter.number}` ? `Chapter ${chapter.number} — ${e(chapter.title)}` : `Chapter ${chapter.number}`;
   const chapterNav = () => `<nav class="actions chapter-nav" aria-label="Pindah chapter">${previous ? link(`${icon('chevLeft')} Sebelumnya`, chapterUrl(previous)) : ''}${link('Daftar Chapter', seriesUrl(comic))}${next ? link(`Berikutnya ${icon('chevRight')}`, chapterUrl(next), 'primary') : ''}</nav>`;
   return `<article class="reader${state.prefs.wide ? ' wide' : ''}"><p class="meta">${link(e(comic.title), seriesUrl(comic))}</p>${title(heading)}${chapterNav()}
-    <div class="panels">${script.map((line, i) => `<figure><img src="${artwork(comic, 1 + (i + Math.max(0, Math.floor(chapter.number) - 1)) % 3)}" alt="" width="300" height="450"><figcaption>${line}</figcaption></figure>`).join('')}</div>${chapterNav()}</article>`;
+    <div id="chapter-panels" class="panels" data-chapter-id="${e(chapter.id)}">${script.map((line, i) => `<figure><img class="fallback" src="${artwork(comic, 1 + (i + Math.max(0, Math.floor(chapter.number) - 1)) % 3)}" alt="" width="300" height="450"><figcaption>${line}</figcaption></figure>`).join('')}</div>${chapterNav()}</article>`;
 }
 
 export function library(state, query) {

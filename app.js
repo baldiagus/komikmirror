@@ -112,6 +112,16 @@ const reader = appUrl.startsWith('/chapter/');
 root.innerHTML = `<div id="top"></div>${header()}<main id="main" class="${appUrl === '/' ? 'home' : 'page'}" tabindex="-1">${content(state, query)}</main>${reader ? '' : footer()}${modal()}<div id="status" role="status" class="sr-only"></div>`;
 const h1 = document.querySelector('main h1');
 if (h1 && appUrl !== '/') document.title = `${h1.textContent} · Shinigami`;
+const panelBox = document.querySelector('#chapter-panels');
+if (panelBox) {
+  const chapterId = panelBox.dataset.chapterId;
+  if (/^[0-9a-f-]{36}$/.test(chapterId)) {
+    fetch(`/api/chapter/${chapterId}`).then(r => r.ok ? r.json() : null).then(data => {
+      if (!data?.pages?.length) return;
+      panelBox.innerHTML = data.pages.map((src, i) => `<figure><img src="${src}" alt="Halaman ${i + 1}" referrerpolicy="no-referrer" loading="lazy"></figure>`).join('');
+    }).catch(() => {});
+  }
+}
 
 function searchResults() {
   const input = document.querySelector('#quick-search');

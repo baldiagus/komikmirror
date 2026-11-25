@@ -10,13 +10,38 @@ const html = await readFile(new URL('./index.html', import.meta.url));
 const files = new Map(await Promise.all([...assets].map(async ([name, type]) => [
   name, { type, body: await readFile(new URL(`.${name}`, import.meta.url)).catch(() => Buffer.from('[]')) },
 ])));
+const chapterCache = new Map();
+async function chapterPages(id) {
+  if (chapterCache.has(id)) return chapterCache.get(id);
+  const res = await fetch(`https://api.shinigami.io/v1/chapter/detail/${id}`, {
+    headers: { Accept: 'application/json', Origin: 'https://s1.shinigami.mx', Referer: 'https://s1.shinigami.mx/' },
+  });
+  if (!res.ok) return null;
+  const json = await res.json().catch(() => null);
+  const d = json?.data;
+  const base = d?.base_url?.replace(/\/?$/, '/');
+  const prefix = d?.chapter?.path?.replace(/^\/+/, '') ?? '';
+  const pages = Array.isArray(d?.chapter?.data) && base
+    ? d.chapter.data.map(name => new URL(prefix + name, base).href)
+    : [];
+  if (pages.length) chapterCache.set(id, pages);
+  return pages;
+}
 
-createServer((req, res) => {
+createServer(async (req, res) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.writeHead(405, { Allow: 'GET, HEAD' }).end();
     return;
   }
   const pathname = req.url.split('?', 1)[0];
+  const chMatch = pathname.match(/^\/api\/chapter\/([0-9a-f-]{36})$/);
+  if (chMatch) {
+    const pages = await chapterPages(chMatch[1]).catch(() => null);
+    if (!pages) { res.writeHead(404).end(); return; }
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'X-Content-Type-Options': 'nosniff' })
+      .end(req.method === 'HEAD' ? undefined : JSON.stringify({ pages }));
+    return;
+  }
   const asset = files.get(pathname);
   if (!asset && /\.[^/]+$/.test(pathname)) {
     res.writeHead(404).end();
