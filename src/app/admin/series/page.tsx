@@ -1,7 +1,9 @@
 import React from "react";
 import Link from "next/link";
+import { AdminSyncControl } from "@/components/AdminSyncControl";
 import { Icon } from "@/components/Icons";
 import { listAdminSeries } from "@/dal/admin";
+import { getShinigamiSyncConfig } from "@/lib/env";
 import { requireAdmin } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +28,7 @@ export default async function AdminSeriesListPage({
   const page = Math.max(1, Number(params.page) || 1);
 
   const data = await listAdminSeries(admin, { q, status, page });
+  const syncCfg = getShinigamiSyncConfig();
 
   return (
     <main id="main" className="page" tabIndex={-1}>
@@ -42,6 +45,8 @@ export default async function AdminSeriesListPage({
           <Icon name="plus" /> Buat Seri Baru
         </Link>
       </div>
+
+      <AdminSyncControl intervalMinutes={syncCfg.intervalMinutes} />
 
       <form className="series-toolbar" action="/admin/series">
         <label className="sr-only" htmlFor="admin-q">

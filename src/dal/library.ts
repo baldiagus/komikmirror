@@ -11,10 +11,43 @@ import {
 } from "@/db/schema";
 import { fallbackCoverDataUri } from "@/lib/artwork";
 import { AppError } from "@/lib/errors";
+import { isSafeRemoteImageUrl } from "@/lib/shinigami";
 import { formatChapterNumber, formatDateShort } from "@/lib/slug";
 import { browserLibraryImportSchema } from "@/lib/validation";
 
 const MAX_QUEUE_SIZE = 30;
+
+function resolveLibraryCoverSrc(row: {
+  id: string;
+  title: string;
+  coverMediaId: string | null;
+  externalCoverUrl?: string | null;
+}): string {
+  if (row.coverMediaId) return `/api/media/${row.coverMediaId}`;
+  if (isSafeRemoteImageUrl(row.externalCoverUrl)) return row.externalCoverUrl!;
+  return fallbackCoverDataUri(row.title, row.id);
+}
+
+export interface ContinueReadingItemDTO {
+  seriesId: string;
+  seriesPublicId: string;
+  seriesTitle: string;
+  coverSrc: string;
+  chapterId: string;
+  chapterPublicId: string;
+  chapterNumber: string;
+  latestChapterNumber: string | null;
+  readAt: string;
+}
+
+export interface UserSeriesReadStateDTO {
+  readChapterIds: string[];
+  lastReadChapter: {
+    chapterId: string;
+    publicId: string;
+    number: string;
+  } | null;
+}
 
 export interface LibrarySeriesItemDTO {
   id: string;
@@ -24,6 +57,7 @@ export interface LibrarySeriesItemDTO {
   type: "Manhwa" | "Manhua" | "Manga";
   genre: string;
   rating: number;
+  latestChapterNumber: string | null;
   coverSrc: string;
   savedAt: string;
   updatedAt: string;
@@ -33,9 +67,11 @@ export interface LibraryHistoryItemDTO {
   seriesId: string;
   seriesPublicId: string;
   seriesTitle: string;
+  coverSrc: string;
   chapterId: string;
   chapterPublicId: string;
   chapterNumber: string;
+  latestChapterNumber: string | null;
   progressPercent: number;
   readAt: string;
 }
@@ -81,6 +117,104 @@ export async function getUserSeriesFlags(
   };
 }
 
+export async function getUserSeriesReadState(
+  userId: string,
+  seriesId: string,
+): Promise<UserSeriesReadStateDTO> {
+  const rows = await db
+    .select({
+      chapterId: chapters.id,
+      publicId: chapters.publicId,
+      chapterNumber: chapters.chapterNumber,
+      readAt: userHistory.readAt,
+    })
+    .from(userHistory)
+    .innerJoin(chapters, eq(userHistory.chapterId, chapters.id))
+    .where(
+      and(
+        eq(userHistory.userId, userId),
+        eq(userHistory.seriesId, seriesId),
+        eq(chapters.status, "published"),
+        eq(chapters.isSynthetic, false),
+      ),
+    )
+    .orderBy(desc(userHistory.readAt));
+
+  const readChapterIds = rows.map((r) => r.chapterId);
+  const latest = rows[0]
+    ? {
+        chapterId: rows[0].chapterId,
+        publicId: rows[0].publicId,
+        number: formatChapterNumber(rows[0].chapterNumber),
+      }
+    : null;
+
+  return {
+    readChapterIds,
+    lastReadChapter: latest,
+  };
+}
+
+export async function getContinueReadingList(
+  userId: string,
+  limit = 6,
+): Promise<ContinueReadingItemDTO[]> {
+  const safeLimit = Math.max(1, Math.min(20, limit));
+  const rows = await db
+    .select({
+      seriesId: series.id,
+      seriesPublicId: series.publicId,
+      seriesTitle: series.title,
+      coverMediaId: series.coverMediaId,
+      externalCoverUrl: series.externalCoverUrl,
+      latestChapterNumber: series.latestChapterNumber,
+      chapterId: chapters.id,
+      chapterPublicId: chapters.publicId,
+      chapterNumber: chapters.chapterNumber,
+      readAt: userHistory.readAt,
+    })
+    .from(userHistory)
+    .innerJoin(chapters, eq(userHistory.chapterId, chapters.id))
+    .innerJoin(series, eq(userHistory.seriesId, series.id))
+    .where(
+      and(
+        eq(userHistory.userId, userId),
+        eq(series.status, "published"),
+        eq(chapters.status, "published"),
+        eq(chapters.isSynthetic, false),
+      ),
+    )
+    .orderBy(desc(userHistory.readAt))
+    .limit(safeLimit * 5);
+
+  const seen = new Set<string>();
+  const result: ContinueReadingItemDTO[] = [];
+  for (const r of rows) {
+    if (seen.has(r.seriesId)) continue;
+    seen.add(r.seriesId);
+    result.push({
+      seriesId: r.seriesId,
+      seriesPublicId: r.seriesPublicId,
+      seriesTitle: r.seriesTitle,
+      coverSrc: resolveLibraryCoverSrc({
+        id: r.seriesId,
+        title: r.seriesTitle,
+        coverMediaId: r.coverMediaId,
+        externalCoverUrl: r.externalCoverUrl,
+      }),
+      chapterId: r.chapterId,
+      chapterPublicId: r.chapterPublicId,
+      chapterNumber: formatChapterNumber(r.chapterNumber),
+      latestChapterNumber: r.latestChapterNumber
+        ? formatChapterNumber(r.latestChapterNumber)
+        : null,
+      readAt: formatDateShort(r.readAt),
+    });
+    if (result.length >= safeLimit) break;
+  }
+  return result;
+}
+
 export async function getUserLibrary(
   userId: string,
   filter = 0,
@@ -96,7 +230,9 @@ export async function getUserLibrary(
       type: series.type,
       genre: series.genre,
       rating: series.rating,
+      latestChapterNumber: series.latestChapterNumber,
       coverMediaId: series.coverMediaId,
+      externalCoverUrl: series.externalCoverUrl,
       updatedAt: series.updatedAt,
       savedAt: userBookmarks.createdAt,
     })
@@ -118,7 +254,9 @@ export async function getUserLibrary(
       type: series.type,
       genre: series.genre,
       rating: series.rating,
+      latestChapterNumber: series.latestChapterNumber,
       coverMediaId: series.coverMediaId,
+      externalCoverUrl: series.externalCoverUrl,
       updatedAt: series.updatedAt,
       savedAt: userQueue.createdAt,
     })
@@ -135,6 +273,9 @@ export async function getUserLibrary(
       seriesId: series.id,
       seriesPublicId: series.publicId,
       seriesTitle: series.title,
+      coverMediaId: series.coverMediaId,
+      externalCoverUrl: series.externalCoverUrl,
+      latestChapterNumber: series.latestChapterNumber,
       chapterId: chapters.id,
       chapterPublicId: chapters.publicId,
       chapterNumber: chapters.chapterNumber,
@@ -167,9 +308,18 @@ export async function getUserLibrary(
       seriesId: h.seriesId,
       seriesPublicId: h.seriesPublicId,
       seriesTitle: h.seriesTitle,
+      coverSrc: resolveLibraryCoverSrc({
+        id: h.seriesId,
+        title: h.seriesTitle,
+        coverMediaId: h.coverMediaId,
+        externalCoverUrl: h.externalCoverUrl,
+      }),
       chapterId: h.chapterId,
       chapterPublicId: h.chapterPublicId,
       chapterNumber: formatChapterNumber(h.chapterNumber),
+      latestChapterNumber: h.latestChapterNumber
+        ? formatChapterNumber(h.latestChapterNumber)
+        : null,
       progressPercent: h.progressPercent,
       readAt: formatDateShort(h.readAt),
     });
@@ -185,9 +335,10 @@ export async function getUserLibrary(
     type: r.type,
     genre: r.genre,
     rating: Number(r.rating),
-    coverSrc: r.coverMediaId
-      ? `/api/media/${r.coverMediaId}`
-      : fallbackCoverDataUri(r.title, r.id),
+    latestChapterNumber: r.latestChapterNumber
+      ? formatChapterNumber(r.latestChapterNumber)
+      : null,
+    coverSrc: resolveLibraryCoverSrc(r),
     savedAt: formatDateShort(r.savedAt),
     updatedAt: formatDateShort(r.updatedAt),
   });

@@ -15,6 +15,10 @@ import {
 } from "@/dal/admin";
 import { AppError, toActionError, type ActionResult } from "@/lib/errors";
 import { requireAdmin } from "@/lib/session";
+import {
+  runShinigamiSync,
+  type ShinigamiSyncReport,
+} from "@/lib/shinigami-sync";
 
 export async function createSeriesAction(
   formData: FormData,
@@ -239,6 +243,36 @@ export async function deletePanelAction(
     revalidatePath(`/admin/series/${seriesId}/chapters/${chapterId}`);
     revalidatePath(`/admin/series/${seriesId}`);
     return { ok: true, data: result, message: "Panel dihapus." };
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+export async function triggerShinigamiSyncAction(
+  mode: "incremental" | "full" = "incremental",
+): Promise<ActionResult<ShinigamiSyncReport>> {
+  try {
+    await requireAdmin();
+    const safeMode = mode === "full" ? "full" : "incremental";
+    const report = await runShinigamiSync({
+      mode: safeMode,
+      maxSeriesChapterFetch: safeMode === "full" ? 25 : 30,
+    });
+    if (report.skippedLocked) {
+      return {
+        ok: true,
+        data: report,
+        message: "Proses sinkronisasi lain sedang berjalan. Coba lagi sebentar lagi.",
+      };
+    }
+    revalidatePath("/");
+    revalidatePath("/series");
+    revalidatePath("/admin/series");
+    const msg =
+      `Sync ${safeMode === "full" ? "penuh" : "terbaru"} selesai (${(report.durationMs / 1000).toFixed(1)} dtk): ` +
+      `+${report.seriesCreated} seri baru, ${report.seriesUpdated} diperbarui, ` +
+      `+${report.chaptersCreated} chapter baru (${report.upstreamMangaFetched} diperiksa).`;
+    return { ok: true, data: report, message: msg };
   } catch (err) {
     return toActionError(err);
   }

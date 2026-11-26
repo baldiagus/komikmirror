@@ -3,6 +3,14 @@ import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { chapterPanels, chapters, mediaAssets, series } from "@/db/schema";
 import { fallbackCoverDataUri } from "@/lib/artwork";
+import { isShinigamiRemotePanelsEnabled } from "@/lib/env";
+import {
+  fetchShinigamiChapterPanels,
+  isSafeRemoteImageUrl,
+  isShinigamiSource,
+  isUuid,
+} from "@/lib/shinigami";
+import { maybeBackfillSeriesChapters } from "@/lib/shinigami-sync";
 import { formatChapterNumber, formatDateShort } from "@/lib/slug";
 import type { SessionUser } from "@/lib/session";
 import { catalogFilterSchema, SERIES_TYPES } from "@/lib/validation";
@@ -38,15 +46,25 @@ export interface SeriesCardDTO {
 
 export interface SeriesDetailDTO extends SeriesCardDTO {
   chapters: ChapterSummaryDTO[];
+  totalChapters: number;
+  chapterPage: number;
+  chapterTotalPages: number;
+  chapterPageSize: number;
+  chapterOrder: "desc" | "asc";
+  chapterQuery: string;
+  firstChapterPublicId: string | null;
 }
+
+export const CHAPTERS_PAGE_SIZE = 30;
 
 export interface PanelDTO {
   id: string;
   mediaId: string;
   position: number;
   url: string;
-  width: number;
-  height: number;
+  width: number | null;
+  height: number | null;
+  isRemote?: boolean;
 }
 
 export interface ReaderChapterDTO {
@@ -67,6 +85,7 @@ export interface ReaderChapterDTO {
   panels: PanelDTO[];
   prevChapter: { publicId: string; number: string; title: string } | null;
   nextChapter: { publicId: string; number: string; title: string } | null;
+  allChapters: { publicId: string; number: string; title: string }[];
   isPreview: boolean;
 }
 
@@ -77,9 +96,13 @@ function resolveCoverSrc(row: {
   id: string;
   title: string;
   coverMediaId: string | null;
+  externalCoverUrl?: string | null;
 }): string {
   if (row.coverMediaId) {
     return `/api/media/${row.coverMediaId}`;
+  }
+  if (isSafeRemoteImageUrl(row.externalCoverUrl)) {
+    return row.externalCoverUrl!;
   }
   return fallbackCoverDataUri(row.title, row.id);
 }
@@ -108,7 +131,7 @@ async function attachLatestChapters(
         eq(chapters.isSynthetic, false),
       ),
     )
-    .orderBy(desc(chapters.sortOrder), desc(chapters.chapterNumber));
+    .orderBy(desc(chapters.chapterNumber), desc(chapters.sortOrder));
 
   const map = new Map<string, ChapterSummaryDTO[]>();
   for (const ch of allCh) {
@@ -355,6 +378,11 @@ export async function searchPublishedQuick(q: string) {
 export async function getSeriesDetail(
   idOrSlug: string,
   viewer: SessionUser | null,
+  options?: {
+    page?: string | number;
+    order?: string;
+    q?: string;
+  },
 ): Promise<SeriesDetailDTO | null> {
   const key = idOrSlug.trim();
   if (!key || key.length > 160) return null;
@@ -374,7 +402,7 @@ export async function getSeriesDetail(
     return null;
   }
 
-  const chCondition = isAdmin
+  const baseChCondition = isAdmin
     ? and(eq(chapters.seriesId, row.id), eq(chapters.isSynthetic, false))
     : and(
         eq(chapters.seriesId, row.id),
@@ -382,13 +410,126 @@ export async function getSeriesDetail(
         eq(chapters.isSynthetic, false),
       );
 
-  const chRows = await db
-    .select()
+  // Check total chapter count & oldest chapter for on-demand backfill
+  const [statsRow] = await db
+    .select({
+      total: sql<number>`count(*)`,
+      minNum: sql<string | null>`MIN(${chapters.chapterNumber})`,
+    })
     .from(chapters)
-    .where(chCondition)
-    .orderBy(desc(chapters.sortOrder), desc(chapters.chapterNumber));
+    .where(baseChCondition);
+
+  const initialTotal = Number(statsRow?.total ?? 0);
+  const oldestChapterNum =
+    statsRow?.minNum !== null && statsRow?.minNum !== undefined
+      ? Number(statsRow.minNum)
+      : null;
+
+  if (isShinigamiRemotePanelsEnabled()) {
+    await maybeBackfillSeriesChapters({
+      id: row.id,
+      source: row.source,
+      externalId: row.externalId,
+      status: row.status,
+      adminEditedAt: row.adminEditedAt,
+      latestChapterNumber: row.latestChapterNumber,
+      existingChapterCount: initialTotal,
+      minChapterNumber: oldestChapterNum,
+    });
+  }
+
+  const chapterOrder: "desc" | "asc" =
+    options?.order === "asc" ? "asc" : "desc";
+  const chapterQuery = (options?.q ?? "").trim().slice(0, 60);
+
+  const filteredConditions = [baseChCondition];
+  if (chapterQuery) {
+    const numericQuery = chapterQuery.replace(/^ch(?:apter)?\.?\s*/i, "").trim();
+    const matchParts = [like(chapters.title, `%${chapterQuery}%`)];
+    if (numericQuery) {
+      matchParts.push(
+        sql`CAST(${chapters.chapterNumber} AS CHAR) LIKE ${`%${numericQuery}%`}`,
+      );
+    }
+    filteredConditions.push(or(...matchParts)!);
+  }
+  const filteredWhere = and(...filteredConditions);
+
+  const [filteredCountRow] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(chapters)
+    .where(filteredWhere);
+
+  const totalChapters = Number(filteredCountRow?.count ?? 0);
+  const chapterTotalPages = Math.max(
+    1,
+    Math.ceil(totalChapters / CHAPTERS_PAGE_SIZE),
+  );
+  const requestedPage = Math.max(1, Math.floor(Number(options?.page) || 1));
+  const chapterPage = Math.min(chapterTotalPages, requestedPage);
+
+  const orderByClause =
+    chapterOrder === "asc"
+      ? [asc(chapters.chapterNumber), asc(chapters.sortOrder), asc(chapters.id)]
+      : [
+          desc(chapters.chapterNumber),
+          desc(chapters.sortOrder),
+          desc(chapters.id),
+        ];
+
+  const [chRows, firstPublishedRows, latestPublishedRows] = await Promise.all([
+    db
+      .select()
+      .from(chapters)
+      .where(filteredWhere)
+      .orderBy(...orderByClause)
+      .limit(CHAPTERS_PAGE_SIZE)
+      .offset((chapterPage - 1) * CHAPTERS_PAGE_SIZE),
+    db
+      .select({ publicId: chapters.publicId })
+      .from(chapters)
+      .where(
+        and(
+          eq(chapters.seriesId, row.id),
+          eq(chapters.status, "published"),
+          eq(chapters.isSynthetic, false),
+        ),
+      )
+      .orderBy(asc(chapters.chapterNumber), asc(chapters.sortOrder))
+      .limit(1),
+    db
+      .select({
+        id: chapters.id,
+        publicId: chapters.publicId,
+        chapterNumber: chapters.chapterNumber,
+        title: chapters.title,
+        sortOrder: chapters.sortOrder,
+        status: chapters.status,
+        updatedAt: chapters.updatedAt,
+      })
+      .from(chapters)
+      .where(
+        and(
+          eq(chapters.seriesId, row.id),
+          eq(chapters.status, "published"),
+          eq(chapters.isSynthetic, false),
+        ),
+      )
+      .orderBy(desc(chapters.chapterNumber), desc(chapters.sortOrder))
+      .limit(2),
+  ]);
 
   const chapterDtos: ChapterSummaryDTO[] = chRows.map((ch) => ({
+    id: ch.id,
+    publicId: ch.publicId,
+    number: formatChapterNumber(ch.chapterNumber),
+    title: ch.title,
+    sortOrder: ch.sortOrder,
+    status: ch.status,
+    updatedAt: formatDateShort(ch.updatedAt),
+  }));
+
+  const latestDtos: ChapterSummaryDTO[] = latestPublishedRows.map((ch) => ({
     id: ch.id,
     publicId: ch.publicId,
     number: formatChapterNumber(ch.chapterNumber),
@@ -413,13 +554,20 @@ export async function getSeriesDetail(
     summary: row.summary,
     updatedLabel: formatDateShort(row.updatedAt, row.updatedLabel),
     latestChapterNumber:
-      chapterDtos[0]?.number ??
+      latestDtos[0]?.number ??
       (row.latestChapterNumber
         ? formatChapterNumber(row.latestChapterNumber)
         : null),
     coverSrc: resolveCoverSrc(row),
-    latestChapters: chapterDtos.slice(0, 2),
+    latestChapters: latestDtos,
     chapters: chapterDtos,
+    totalChapters,
+    chapterPage,
+    chapterTotalPages,
+    chapterPageSize: CHAPTERS_PAGE_SIZE,
+    chapterOrder,
+    chapterQuery,
+    firstChapterPublicId: firstPublishedRows[0]?.publicId ?? null,
   };
 }
 
@@ -474,7 +622,7 @@ export async function getChapterForReader(
     })
     .from(chapters)
     .where(siblingCondition)
-    .orderBy(asc(chapters.sortOrder), asc(chapters.chapterNumber), asc(chapters.id));
+    .orderBy(asc(chapters.chapterNumber), asc(chapters.sortOrder), asc(chapters.id));
 
   const idx = siblings.findIndex((s) => s.id === ch.id);
   const prev = idx > 0 ? siblings[idx - 1] : null;
@@ -493,6 +641,35 @@ export async function getChapterForReader(
     .where(eq(chapterPanels.chapterId, ch.id))
     .orderBy(asc(chapterPanels.position));
 
+  let panels: PanelDTO[] = panelRows.map((p) => ({
+    id: p.id,
+    mediaId: p.mediaId,
+    position: p.position,
+    url: `/api/media/${p.mediaId}`,
+    width: p.width,
+    height: p.height,
+    isRemote: false,
+  }));
+
+  if (
+    panels.length === 0 &&
+    isShinigamiRemotePanelsEnabled() &&
+    isShinigamiSource(ch.source) &&
+    isUuid(ch.externalId) &&
+    !ch.isSynthetic
+  ) {
+    const remotePanels = await fetchShinigamiChapterPanels(ch.externalId);
+    panels = remotePanels.map((p) => ({
+      id: p.id,
+      mediaId: "",
+      position: p.position,
+      url: p.url,
+      width: null,
+      height: null,
+      isRemote: true,
+    }));
+  }
+
   return {
     series: {
       id: parent.id,
@@ -508,14 +685,7 @@ export async function getChapterForReader(
       title: ch.title,
       status: ch.status,
     },
-    panels: panelRows.map((p) => ({
-      id: p.id,
-      mediaId: p.mediaId,
-      position: p.position,
-      url: `/api/media/${p.mediaId}`,
-      width: p.width,
-      height: p.height,
-    })),
+    panels,
     prevChapter: prev
       ? {
           publicId: prev.publicId,
@@ -530,6 +700,11 @@ export async function getChapterForReader(
           title: next.title,
         }
       : null,
+    allChapters: [...siblings].reverse().map((s) => ({
+      publicId: s.publicId,
+      number: formatChapterNumber(s.chapterNumber),
+      title: s.title,
+    })),
     isPreview: !isPubliclyVisible,
   };
 }

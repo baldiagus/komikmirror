@@ -16,9 +16,26 @@ export function formatChapterNumber(raw: string | number | null | undefined): st
 }
 
 export function formatDateShort(date: Date | string | null | undefined, fallback?: string | null): string {
+  if (date) {
+    const d = typeof date === "string" ? new Date(date) : date;
+    if (!Number.isNaN(d.getTime())) {
+      const diffMs = Date.now() - d.getTime();
+      if (diffMs >= 0 && diffMs < 60_000) return "Baru saja";
+      if (diffMs >= 0 && diffMs < 60 * 60_000) {
+        return `${Math.floor(diffMs / 60_000)} mnt`;
+      }
+      if (diffMs >= 0 && diffMs < 24 * 60 * 60_000) {
+        return `${Math.floor(diffMs / (60 * 60_000))} jam`;
+      }
+      if (diffMs >= 0 && diffMs < 7 * 24 * 60 * 60_000) {
+        return `${Math.floor(diffMs / (24 * 60 * 60_000))} hr`;
+      }
+      if (diffMs >= 0 && diffMs < 28 * 24 * 60 * 60_000) {
+        return `${Math.floor(diffMs / (7 * 24 * 60 * 60_000))} minggu`;
+      }
+      return d.toISOString().slice(0, 10);
+    }
+  }
   if (fallback && fallback.trim()) return fallback;
-  if (!date) return "Baru";
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (Number.isNaN(d.getTime())) return "Baru";
-  return d.toISOString().slice(0, 10);
+  return "Baru";
 }

@@ -495,4 +495,143 @@ describe("Komik Mirror MySQL Integration Suite", async () => {
       .from(chapterPanels);
     assert.ok(Number(panelCount.count) >= 1);
   });
+
+  it("configures Google OAuth sign-in/register with PKCE, state persistence, and signup gate", async () => {
+    const { betterAuth } = await import("better-auth");
+    const { drizzleAdapter } = await import("better-auth/adapters/drizzle");
+    const { admin } = await import("better-auth/plugins");
+    const schema = await import("../../src/db/schema");
+    const { getGoogleOAuthConfig } = await import("../../src/lib/env");
+
+    const prevId = process.env.GOOGLE_CLIENT_ID;
+    const prevSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const prevRedirect = process.env.GOOGLE_REDIRECT_URI;
+    try {
+      delete process.env.GOOGLE_CLIENT_ID;
+      delete process.env.GOOGLE_CLIENT_SECRET;
+      delete process.env.GOOGLE_REDIRECT_URI;
+      assert.equal(getGoogleOAuthConfig(), null);
+
+      process.env.GOOGLE_CLIENT_ID = "test-google-client-id.apps.googleusercontent.com";
+      process.env.GOOGLE_CLIENT_SECRET = "test-google-client-secret";
+      const cfg = getGoogleOAuthConfig();
+      assert.ok(cfg);
+      assert.equal(cfg.clientId, "test-google-client-id.apps.googleusercontent.com");
+
+      const testAuth = betterAuth({
+        baseURL: "http://localhost:3000",
+        secret: "komik-mirror-integration-test-secret-at-least-32-chars",
+        database: drizzleAdapter(db, { provider: "mysql", schema }),
+        account: {
+          accountLinking: {
+            enabled: true,
+            trustedProviders: ["google"],
+          },
+        },
+        socialProviders: {
+          google: {
+            clientId: cfg.clientId,
+            clientSecret: cfg.clientSecret,
+            prompt: "select_account",
+            requireEmailVerification: true,
+            disableSignUp: false,
+          },
+        },
+        plugins: [admin({ defaultRole: "user", adminRoles: ["admin"] })],
+      });
+
+      const res = await testAuth.api.signInSocial({
+        body: {
+          provider: "google",
+          callbackURL: "/library",
+          newUserCallbackURL: "/library",
+          errorCallbackURL: "/register",
+          requestSignUp: true,
+        },
+      });
+      assert.equal(res.redirect, true);
+      assert.ok(res.url);
+
+      const authUrl = new URL(res.url);
+      assert.equal(authUrl.origin, "https://accounts.google.com");
+      assert.equal(authUrl.searchParams.get("client_id"), cfg.clientId);
+      assert.equal(
+        authUrl.searchParams.get("redirect_uri"),
+        "http://localhost:3000/api/auth/callback/google",
+      );
+      assert.equal(authUrl.searchParams.get("prompt"), "select_account");
+      assert.equal(authUrl.searchParams.get("code_challenge_method"), "S256");
+      assert.ok((authUrl.searchParams.get("code_challenge") ?? "").length > 20);
+      assert.ok((authUrl.searchParams.get("state") ?? "").length > 10);
+    } finally {
+      if (prevId === undefined) delete process.env.GOOGLE_CLIENT_ID;
+      else process.env.GOOGLE_CLIENT_ID = prevId;
+      if (prevSecret === undefined) delete process.env.GOOGLE_CLIENT_SECRET;
+      else process.env.GOOGLE_CLIENT_SECRET = prevSecret;
+      if (prevRedirect === undefined) delete process.env.GOOGLE_REDIRECT_URI;
+      else process.env.GOOGLE_REDIRECT_URI = prevRedirect;
+    }
+  });
+
+  it("validates remote Shinigami CDN allowlist (SSRF guard) and keeps admin chapters isolated from remote panel fallback", async () => {
+    const { isSafeRemoteImageUrl, isShinigamiSource } = await import(
+      "../../src/lib/shinigami"
+    );
+
+    assert.equal(
+      isSafeRemoteImageUrl("https://cdn.shinigami.gg/chapter/manga_1/page-1.webp"),
+      true,
+    );
+    assert.equal(
+      isSafeRemoteImageUrl("https://storage.shngm.id/covers/abc.jpg"),
+      true,
+    );
+    assert.equal(isSafeRemoteImageUrl("http://cdn.shinigami.gg/a.webp"), false);
+    assert.equal(isSafeRemoteImageUrl("https://127.0.0.1/secret.png"), false);
+    assert.equal(isSafeRemoteImageUrl("https://169.254.169.254/latest/meta-data"), false);
+    assert.equal(isSafeRemoteImageUrl("https://evil.example.com/p.webp"), false);
+    assert.equal(isShinigamiSource("shinigami-sync"), true);
+    assert.equal(isShinigamiSource("shinigami-snapshot"), true);
+    assert.equal(isShinigamiSource(null), false);
+
+    // Admin-created series with externalCoverUrl disabled & chapter without local panels MUST stay empty
+    const s = await adminDal.createSeriesRecord(adminActor, {
+      title: "Admin Manual Tanpa Panel",
+      slug: `admin-manual-${Date.now()}`,
+      type: "Manhwa",
+      genre: "Action",
+      summary: "Seri manual admin.",
+    });
+    await adminDal.setSeriesStatus(adminActor, {
+      seriesId: s.id,
+      status: "published",
+    });
+    const ch = await adminDal.createChapterRecord(adminActor, {
+      seriesId: s.id,
+      chapterNumber: "1",
+      title: "Kosong",
+    });
+    await adminDal.setChapterStatus(adminActor, {
+      chapterId: ch.id,
+      status: "published",
+    });
+
+    const reader = await catalogDal.getChapterForReader(ch.publicId, null);
+    assert.ok(reader);
+    assert.equal(reader.panels.length, 0);
+    assert.equal(reader.allChapters.length, 1);
+
+    // Verify per-account read state & continue reading list isolation
+    await libraryDal.recordUserHistory(userA.id, ch.id, 100);
+    const readStateA = await libraryDal.getUserSeriesReadState(userA.id, s.id);
+    assert.deepEqual(readStateA.readChapterIds, [ch.id]);
+    assert.equal(readStateA.lastReadChapter?.publicId, ch.publicId);
+
+    const continueA = await libraryDal.getContinueReadingList(userA.id, 6);
+    assert.ok(continueA.some((item) => item.seriesId === s.id));
+
+    const readStateB = await libraryDal.getUserSeriesReadState(userB.id, s.id);
+    assert.equal(readStateB.readChapterIds.length, 0);
+    assert.equal(readStateB.lastReadChapter, null);
+  });
 });
