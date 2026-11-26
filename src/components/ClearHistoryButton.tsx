@@ -23,7 +23,7 @@ export function ClearHistoryButton() {
   }
 
   return (
-    <div className="actions">
+    <div className="actions" style={{ marginBlock: 0 }}>
       <button
         type="button"
         className="danger-btn"

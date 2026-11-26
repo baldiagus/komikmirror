@@ -8,7 +8,11 @@ type IconName =
   | "close"
   | "plus"
   | "edit"
-  | "lock";
+  | "lock"
+  | "bookmark"
+  | "clock"
+  | "list"
+  | "trash";
 
 export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
   return (
@@ -47,6 +51,30 @@ export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
         <>
           <rect x="5" y="11" width="14" height="10" rx="2" />
           <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+        </>
+      )}
+      {name === "bookmark" && (
+        <path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1Z" />
+      )}
+      {name === "clock" && (
+        <>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3 2" />
+        </>
+      )}
+      {name === "list" && (
+        <>
+          <path d="M8 6h13M8 12h13M8 18h13" />
+          <circle cx="4" cy="6" r="1" fill="currentColor" stroke="none" />
+          <circle cx="4" cy="12" r="1" fill="currentColor" stroke="none" />
+          <circle cx="4" cy="18" r="1" fill="currentColor" stroke="none" />
+        </>
+      )}
+      {name === "trash" && (
+        <>
+          <path d="M3 6h18" />
+          <path d="M8 6V4h8v2" />
+          <path d="M6 6l1 14h10l1-14" />
         </>
       )}
     </svg>

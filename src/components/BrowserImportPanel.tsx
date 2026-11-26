@@ -87,33 +87,21 @@ export function BrowserImportPanel() {
     reader.readAsText(file);
   }
 
-  return (
-    <section className="surface side" aria-labelledby="import-browser-heading">
-      <h2 id="import-browser-heading">Impor data browser (opsional)</h2>
-      <p className="meta">
-        Pindahkan bookmark, antrean, dan riwayat baca lama dari browser ini atau
-        dari berkas ekspor JSON ke akun Anda. Cookie dan token tidak pernah
-        diimpor, dan cadangan lokal tidak dihapus otomatis.
-      </p>
-
-      {status && (
-        <div
-          className={`alert ${status.kind === "ok" ? "ok" : "error"}`}
-          role="status"
-        >
-          {status.text}
-        </div>
-      )}
-
-      {localCandidate ? (
-        <div className="surface side" style={{ marginBottom: 12 }}>
-          <p>
-            <strong>Data browser terdeteksi pada origin ini:</strong>{" "}
-            <span className="num">{localCandidate.bookmarks.length}</span>{" "}
-            bookmark,{" "}
-            <span className="num">{localCandidate.queue.length}</span> antrean,{" "}
-            <span className="num">{localCandidate.history.length}</span> riwayat.
-          </p>
+  if (localCandidate) {
+    return (
+      <section className="surface side import-panel" aria-labelledby="import-browser-heading">
+        <div className="import-head">
+          <div>
+            <h2 id="import-browser-heading" style={{ fontSize: 16, marginBottom: 4 }}>
+              Data browser lama terdeteksi
+            </h2>
+            <p className="meta" style={{ margin: 0 }}>
+              Ditemukan <strong className="num">{localCandidate.bookmarks.length}</strong> bookmark,{" "}
+              <strong className="num">{localCandidate.queue.length}</strong> antrean, dan{" "}
+              <strong className="num">{localCandidate.history.length}</strong> riwayat pada browser ini.
+              Cadangan lokal tidak dihapus otomatis.
+            </p>
+          </div>
           <button
             type="button"
             className="primary"
@@ -123,41 +111,70 @@ export function BrowserImportPanel() {
             {isPending ? "Mengimpor..." : "Setujui & Impor ke Akun Saya"}
           </button>
         </div>
-      ) : (
-        <p className="meta">
-          Tidak ada data <code>shinigami-lab-v1</code> di penyimpanan browser
-          origin ini. Jika data lama ada di port lain (mis. port 4173), unggah
-          berkas ekspor JSON di bawah.
-        </p>
-      )}
 
-      <div className="stack">
-        <label>
-          Impor dari berkas JSON ekspor (lintas port/origin)
-          <input
-            type="file"
-            accept="application/json,.json"
-            onChange={handleFileChange}
-          />
-        </label>
-        {fileCandidate && (
-          <div className="actions">
-            <span className="meta">
-              Siap diimpor: {fileCandidate.bookmarks.length} bookmark,{" "}
-              {fileCandidate.queue.length} antrean,{" "}
-              {fileCandidate.history.length} riwayat.
-            </span>
-            <button
-              type="button"
-              className="primary"
-              onClick={() => runImport(fileCandidate)}
-              disabled={isPending}
-            >
-              {isPending ? "Mengimpor..." : "Setujui & Impor Berkas JSON"}
-            </button>
+        {status && (
+          <div
+            className={`alert ${status.kind === "ok" ? "ok" : "error"}`}
+            role="status"
+            style={{ marginTop: 12, marginBottom: 0 }}
+          >
+            {status.text}
           </div>
         )}
+      </section>
+    );
+  }
+
+  return (
+    <details className="surface import-disclosure">
+      <summary className="import-summary">
+        <div>
+          <strong id="import-browser-heading">Impor data browser lama / berkas JSON (opsional)</strong>
+          <span className="meta">
+            Pindahkan bookmark, antrean, dan riwayat dari berkas ekspor JSON lintas origin.
+          </span>
+        </div>
+      </summary>
+      <div className="import-body">
+        {status && (
+          <div
+            className={`alert ${status.kind === "ok" ? "ok" : "error"}`}
+            role="status"
+          >
+            {status.text}
+          </div>
+        )}
+        <p className="meta">
+          Cookie dan token tidak pernah diimpor, dan cadangan lokal tidak dihapus otomatis.
+        </p>
+        <div className="stack">
+          <label>
+            Unggah berkas JSON ekspor (<code>shinigami-lab-v1</code>)
+            <input
+              type="file"
+              accept="application/json,.json"
+              onChange={handleFileChange}
+            />
+          </label>
+          {fileCandidate && (
+            <div className="actions">
+              <span className="meta">
+                Siap diimpor: {fileCandidate.bookmarks.length} bookmark,{" "}
+                {fileCandidate.queue.length} antrean,{" "}
+                {fileCandidate.history.length} riwayat.
+              </span>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => runImport(fileCandidate)}
+                disabled={isPending}
+              >
+                {isPending ? "Mengimpor..." : "Setujui & Impor Berkas JSON"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-    </section>
+    </details>
   );
 }
