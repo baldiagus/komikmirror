@@ -20,6 +20,13 @@ export function getTrustedOrigins(): string[] {
   if (authUrl) {
     origins.add(authUrl.replace(/\/+$/, ""));
   }
+  const extra = process.env.TRUSTED_ORIGINS ?? "";
+  for (const part of extra.split(",")) {
+    const cleaned = part.trim().replace(/\/+$/, "");
+    if (/^https?:\/\/[^/\s]+$/i.test(cleaned)) {
+      origins.add(cleaned);
+    }
+  }
   return Array.from(origins);
 }
 
