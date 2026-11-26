@@ -23,6 +23,7 @@ export const adCampaigns = mysqlTable(
       "series_mid",
       "reader_top",
       "reader_bottom",
+      "reader_interstitial",
     ]).notNull(),
     adType: mysqlEnum("ad_type", ["banner", "network"])
       .notNull()
@@ -46,6 +47,8 @@ export const adCampaigns = mysqlTable(
     networkCode: text("network_code"),
     frameHeightDesktop: int("frame_height_desktop").notNull().default(100),
     frameHeightMobile: int("frame_height_mobile").notNull().default(100),
+    cooldownMinutes: int("cooldown_minutes").notNull().default(5),
+    closeDelaySeconds: int("close_delay_seconds").notNull().default(3),
     startsAt: timestamp("starts_at", { fsp: 3 }),
     endsAt: timestamp("ends_at", { fsp: 3 }),
     impressions: int("impressions", { unsigned: true }).notNull().default(0),

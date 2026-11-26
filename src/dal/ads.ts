@@ -29,6 +29,8 @@ export interface PublicAdDTO {
   networkCode: string | null;
   frameHeightDesktop: number;
   frameHeightMobile: number;
+  cooldownMinutes: number;
+  closeDelaySeconds: number;
 }
 
 export interface AdminAdItemDTO {
@@ -49,6 +51,8 @@ export interface AdminAdItemDTO {
   networkCode: string;
   frameHeightDesktop: number;
   frameHeightMobile: number;
+  cooldownMinutes: number;
+  closeDelaySeconds: number;
   startsAt: string | null;
   endsAt: string | null;
   impressions: number;
@@ -157,6 +161,8 @@ function toPublicAdDTO(row: typeof adCampaigns.$inferSelect): PublicAdDTO {
     networkCode: row.adType === "network" ? (row.networkCode ?? "") : null,
     frameHeightDesktop: row.frameHeightDesktop,
     frameHeightMobile: row.frameHeightMobile,
+    cooldownMinutes: row.cooldownMinutes,
+    closeDelaySeconds: row.closeDelaySeconds,
   };
 }
 
@@ -204,7 +210,10 @@ export async function getActiveAdsForSlots(
     const chosen = pickWeightedCandidate(candidates);
     if (chosen) {
       result[s] = toPublicAdDTO(chosen);
-      chosenIds.push(chosen.id);
+      // Interstitial impressions are reported client-side only when actually displayed past cooldown
+      if (s !== "reader_interstitial") {
+        chosenIds.push(chosen.id);
+      }
     }
   }
 
@@ -251,6 +260,30 @@ export async function resolveAdClick(
     .catch(() => {});
 
   return { targetUrl: row.targetUrl! };
+}
+
+export async function recordAdImpression(adId: string): Promise<boolean> {
+  if (!/^[0-9a-f-]{36}$/.test(adId)) return false;
+
+  const [row] = await db
+    .select({
+      id: adCampaigns.id,
+      startsAt: adCampaigns.startsAt,
+      endsAt: adCampaigns.endsAt,
+    })
+    .from(adCampaigns)
+    .where(and(eq(adCampaigns.id, adId), eq(adCampaigns.status, "active")))
+    .limit(1);
+
+  if (!row || !isWithinSchedule(row, new Date())) return false;
+
+  await db
+    .update(adCampaigns)
+    .set({ impressions: sql`${adCampaigns.impressions} + 1` })
+    .where(eq(adCampaigns.id, row.id))
+    .catch(() => {});
+
+  return true;
 }
 
 export async function listAdminAds(
@@ -305,6 +338,8 @@ export async function listAdminAds(
     networkCode: r.networkCode ?? "",
     frameHeightDesktop: r.frameHeightDesktop,
     frameHeightMobile: r.frameHeightMobile,
+    cooldownMinutes: r.cooldownMinutes,
+    closeDelaySeconds: r.closeDelaySeconds,
     startsAt: toIsoInput(r.startsAt),
     endsAt: toIsoInput(r.endsAt),
     impressions: r.impressions,
@@ -447,6 +482,8 @@ export async function createAdminAd(
       networkCode: data.networkCode || null,
       frameHeightDesktop: data.frameHeightDesktop,
       frameHeightMobile: data.frameHeightMobile,
+      cooldownMinutes: data.cooldownMinutes,
+      closeDelaySeconds: data.closeDelaySeconds,
       startsAt: data.startsAt ? new Date(data.startsAt) : null,
       endsAt: data.endsAt ? new Date(data.endsAt) : null,
       createdBy: admin.id,
@@ -567,6 +604,8 @@ export async function updateAdminAd(
       networkCode: data.networkCode || null,
       frameHeightDesktop: data.frameHeightDesktop,
       frameHeightMobile: data.frameHeightMobile,
+      cooldownMinutes: data.cooldownMinutes,
+      closeDelaySeconds: data.closeDelaySeconds,
       startsAt: data.startsAt ? new Date(data.startsAt) : null,
       endsAt: data.endsAt ? new Date(data.endsAt) : null,
     })

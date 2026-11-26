@@ -851,9 +851,34 @@ describe("Komik Mirror MySQL Integration Suite", async () => {
     assert.equal(resetItem?.impressions, 0);
     assert.equal(resetItem?.clicks, 0);
 
+    // Create active interstitial ad (cooldown 5m, 3s close delay) — SSR fetch must NOT increment impressions
+    const createdPopup = await adsDal.createAdminAd(adminActor, {
+      name: "Reader Popup Test",
+      slot: "reader_interstitial",
+      adType: "network",
+      status: "active",
+      networkCode: "<div>Popup Ad</div>",
+      cooldownMinutes: 5,
+      closeDelaySeconds: 3,
+    });
+    const popupFetch = await adsDal.getActiveAdForSlot("reader_interstitial", userA);
+    assert.ok(popupFetch);
+    assert.equal(popupFetch.cooldownMinutes, 5);
+    assert.equal(popupFetch.closeDelaySeconds, 3);
+    const beforeBeacon = (await adsDal.listAdminAds(adminActor)).items.find(
+      (x) => x.id === createdPopup.id,
+    );
+    assert.equal(beforeBeacon?.impressions, 0);
+    await adsDal.recordAdImpression(createdPopup.id);
+    const afterBeacon = (await adsDal.listAdminAds(adminActor)).items.find(
+      (x) => x.id === createdPopup.id,
+    );
+    assert.equal(afterBeacon?.impressions, 1);
+
     // Delete cleans up ads and orphaned ad media
     await adsDal.deleteAdminAd(adminActor, createdBanner.id);
     await adsDal.deleteAdminAd(adminActor, createdNet.id);
+    await adsDal.deleteAdminAd(adminActor, createdPopup.id);
     const deletedMedia = await catalogDal.getMediaAccessRecord(
       bannerItem.desktopMediaId!,
       adminActor,

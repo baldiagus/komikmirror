@@ -13,6 +13,7 @@ import type { AdminAdItemDTO } from "@/dal/ads";
 import {
   AD_SLOT_META,
   AD_SLOTS,
+  type AdSlotKey,
   type AdStatus,
   type AdType,
 } from "@/lib/validation";
@@ -33,10 +34,14 @@ function AdFormFields({
   ad,
   adType,
   onAdTypeChange,
+  slot,
+  onSlotChange,
 }: {
   ad?: AdminAdItemDTO;
   adType: AdType;
   onAdTypeChange: (next: AdType) => void;
+  slot: AdSlotKey;
+  onSlotChange: (next: AdSlotKey) => void;
 }) {
   return (
     <>
@@ -54,7 +59,11 @@ function AdFormFields({
         </label>
         <label>
           Posisi Slot
-          <select name="slot" defaultValue={ad?.slot ?? "home_top"}>
+          <select
+            name="slot"
+            value={slot}
+            onChange={(e) => onSlotChange(e.target.value as AdSlotKey)}
+          >
             {AD_SLOTS.map((s) => (
               <option key={s} value={s}>
                 {AD_SLOT_META[s].label}
@@ -63,6 +72,38 @@ function AdFormFields({
           </select>
         </label>
       </div>
+
+      {slot === "reader_interstitial" && (
+        <div className="stack ad-fieldset">
+          <div className="two-col">
+            <label>
+              Jeda Cooldown (menit · 1–1440)
+              <input
+                type="number"
+                name="cooldownMinutes"
+                min={1}
+                max={1440}
+                defaultValue={ad?.cooldownMinutes ?? 5}
+              />
+            </label>
+            <label>
+              Hitung Mundur Tombol × (detik · 0–15)
+              <input
+                type="number"
+                name="closeDelaySeconds"
+                min={0}
+                max={15}
+                defaultValue={ad?.closeDelaySeconds ?? 3}
+              />
+            </label>
+          </div>
+          <p className="meta" style={{ margin: 0 }}>
+            Muncul otomatis saat pengguna membuka chapter pertama, lalu hanya
+            muncul lagi saat pengguna mengakses chapter baru setelah jeda
+            cooldown terpenuhi.
+          </p>
+        </div>
+      )}
 
       <div className="two-col">
         <label>
@@ -245,6 +286,7 @@ function AdminAdEditDrawer({
 }) {
   const router = useRouter();
   const [adType, setAdType] = useState<AdType>(ad.adType);
+  const [slot, setSlot] = useState<AdSlotKey>(ad.slot);
   const [saving, startSave] = useTransition();
 
   function handleUpdate(e: React.FormEvent<HTMLFormElement>) {
@@ -267,7 +309,13 @@ function AdminAdEditDrawer({
       <summary className="chip">Edit Kampanye</summary>
       <form className="stack ad-edit-form" onSubmit={handleUpdate}>
         <input type="hidden" name="adId" value={ad.id} />
-        <AdFormFields ad={ad} adType={adType} onAdTypeChange={setAdType} />
+        <AdFormFields
+          ad={ad}
+          adType={adType}
+          onAdTypeChange={setAdType}
+          slot={slot}
+          onSlotChange={setSlot}
+        />
         <div className="actions" style={{ marginBlock: 0 }}>
           <button
             type="submit"
@@ -291,6 +339,7 @@ export function AdminAdsClient({
 }) {
   const router = useRouter();
   const [createType, setCreateType] = useState<AdType>("banner");
+  const [createSlot, setCreateSlot] = useState<AdSlotKey>("home_top");
   const [feedback, setFeedback] = useState<{
     kind: "ok" | "error";
     text: string;
@@ -310,6 +359,7 @@ export function AdminAdsClient({
         setFeedback({ kind: "ok", text: res.message ?? "Iklan dibuat." });
         form.reset();
         setCreateType("banner");
+        setCreateSlot("home_top");
         router.refresh();
       } else {
         setFeedback({ kind: "error", text: res.error });
@@ -403,6 +453,8 @@ export function AdminAdsClient({
             <AdFormFields
               adType={createType}
               onAdTypeChange={setCreateType}
+              slot={createSlot}
+              onSlotChange={setCreateSlot}
             />
             <div className="actions" style={{ marginBlock: "6px 0" }}>
               <button type="submit" className="primary" disabled={creating}>
@@ -492,6 +544,12 @@ export function AdminAdsClient({
                         <strong className="points">{ad.ctr.toFixed(2)}%</strong>
                       </span>
                       <span>Prioritas: {ad.priority}</span>
+                      {ad.slot === "reader_interstitial" && (
+                        <span>
+                          Cooldown: {ad.cooldownMinutes} mnt · Tutup:{" "}
+                          {ad.closeDelaySeconds} dtk
+                        </span>
+                      )}
                       {(ad.startsAt || ad.endsAt) && (
                         <span>
                           Jadwal: {ad.startsAt ?? "sekarang"} →{" "}

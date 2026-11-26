@@ -10,6 +10,7 @@ export const AD_SLOTS = [
   "series_mid",
   "reader_top",
   "reader_bottom",
+  "reader_interstitial",
 ] as const;
 export type AdSlotKey = (typeof AD_SLOTS)[number];
 
@@ -36,6 +37,11 @@ export const AD_SLOT_META: Record<
   reader_bottom: {
     label: "Pembaca (Bawah Panel)",
     description: "Tampil tepat di bawah panel terakhir sebelum navigasi chapter.",
+  },
+  reader_interstitial: {
+    label: "Pembaca (Popup · Cooldown)",
+    description:
+      "Popup overlay saat buka chapter komik dengan hitung mundur & jeda cooldown sebelum muncul lagi di chapter baru.",
   },
 };
 
@@ -210,10 +216,24 @@ const adBaseSchema = z.object({
   frameHeightMobile: z.coerce
     .number()
     .int()
-    .min(50, "Tinggi frame minimal 50px.")
+    .min(50, "Tinggi frame maksimal 600px dan minimal 50px.")
     .max(600, "Tinggi frame maksimal 600px.")
     .optional()
     .default(100),
+  cooldownMinutes: z.coerce
+    .number()
+    .int()
+    .min(1, "Cooldown minimal 1 menit.")
+    .max(1440, "Cooldown maksimal 1440 menit (24 jam).")
+    .optional()
+    .default(5),
+  closeDelaySeconds: z.coerce
+    .number()
+    .int()
+    .min(0, "Hitung mundur minimal 0 detik.")
+    .max(15, "Hitung mundur maksimal 15 detik.")
+    .optional()
+    .default(3),
   startsAt: optionalDatetimeSchema,
   endsAt: optionalDatetimeSchema,
 });

@@ -22,7 +22,10 @@ export default async function ChapterReaderPage({
     viewer && !data.isPreview
       ? recordUserHistory(viewer.id, data.chapter.id, 100)
       : Promise.resolve(),
-    getActiveAdsForSlots(["reader_top", "reader_bottom"], viewer),
+    getActiveAdsForSlots(
+      ["reader_top", "reader_bottom", "reader_interstitial"],
+      viewer,
+    ),
   ]);
 
   const heading =
@@ -45,6 +48,7 @@ export default async function ChapterReaderPage({
         allChapters={data.allChapters}
         topAd={readerAds.reader_top}
         bottomAd={readerAds.reader_bottom}
+        interstitialAd={readerAds.reader_interstitial}
       />
     </main>
   );

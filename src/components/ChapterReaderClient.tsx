@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AdSlot } from "@/components/AdSlot";
 import { Icon } from "@/components/Icons";
+import { ReaderInterstitialAd } from "@/components/ReaderInterstitialAd";
 import type { PublicAdDTO } from "@/dal/ads";
 import type { PanelDTO } from "@/dal/catalog";
 import {
@@ -85,6 +86,7 @@ export function ChapterReaderClient({
   allChapters,
   topAd = null,
   bottomAd = null,
+  interstitialAd = null,
 }: {
   seriesPublicId: string;
   seriesTitle: string;
@@ -97,6 +99,7 @@ export function ChapterReaderClient({
   allChapters: { publicId: string; number: string; title: string }[];
   topAd?: PublicAdDTO | null;
   bottomAd?: PublicAdDTO | null;
+  interstitialAd?: PublicAdDTO | null;
 }) {
   const router = useRouter();
   const [widthMode, setWidthMode] = useState<WidthMode>("compact");
@@ -242,6 +245,11 @@ export function ChapterReaderClient({
 
   return (
     <>
+      <ReaderInterstitialAd
+        ad={interstitialAd}
+        chapterPublicId={currentChapterPublicId}
+      />
+
       <article className={readerClass}>
         <p className="meta">
           <Link className="chip" href={`/series/${seriesPublicId}`}>

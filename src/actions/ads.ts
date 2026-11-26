@@ -41,6 +41,8 @@ function parseAdFormPayload(formData: FormData) {
     networkCode: String(formData.get("networkCode") ?? ""),
     frameHeightDesktop: formData.get("frameHeightDesktop") ?? 100,
     frameHeightMobile: formData.get("frameHeightMobile") ?? 100,
+    cooldownMinutes: formData.get("cooldownMinutes") ?? 5,
+    closeDelaySeconds: formData.get("closeDelaySeconds") ?? 3,
     startsAt: String(formData.get("startsAt") ?? ""),
     endsAt: String(formData.get("endsAt") ?? ""),
   };
