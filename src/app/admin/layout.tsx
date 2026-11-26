@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AdminSubNav } from "@/components/AdminSubNav";
 import { getSessionUser } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
@@ -30,5 +31,10 @@ export default async function AdminLayout({
       </main>
     );
   }
-  return <>{children}</>;
+  return (
+    <>
+      <AdminSubNav />
+      {children}
+    </>
+  );
 }

@@ -634,4 +634,70 @@ describe("Komik Mirror MySQL Integration Suite", async () => {
     assert.equal(readStateB.readChapterIds.length, 0);
     assert.equal(readStateB.lastReadChapter, null);
   });
+
+  it("enforces admin-only user management, prevents self-lockout, and revokes sessions on ban", async () => {
+    const { session } = await import("../../src/db/schema");
+
+    // Non-admin cannot list or mutate users
+    await assert.rejects(
+      () => adminDal.listAdminUsers(userA, {}),
+      (err: unknown) => err instanceof AppError && err.code === "FORBIDDEN",
+    );
+    await assert.rejects(
+      () => adminDal.setAdminUserRole(userA, { userId: userB.id, role: "admin" }),
+      (err: unknown) => err instanceof AppError && err.code === "FORBIDDEN",
+    );
+    await assert.rejects(
+      () => adminDal.setAdminUserBanned(userA, { userId: userB.id, banned: true }),
+      (err: unknown) => err instanceof AppError && err.code === "FORBIDDEN",
+    );
+
+    // Admin cannot demote or ban self
+    await assert.rejects(
+      () => adminDal.setAdminUserRole(adminActor, { userId: adminActor.id, role: "user" }),
+      (err: unknown) => err instanceof AppError && err.code === "CONFLICT",
+    );
+    await assert.rejects(
+      () => adminDal.setAdminUserBanned(adminActor, { userId: adminActor.id, banned: true }),
+      (err: unknown) => err instanceof AppError && err.code === "CONFLICT",
+    );
+
+    // Admin can list users, promote/demote userB, and ban (revoking active session)
+    const listed = await adminDal.listAdminUsers(adminActor, { q: userB.email });
+    assert.equal(listed.items.length, 1);
+    assert.equal(listed.items[0].role, "user");
+
+    await adminDal.setAdminUserRole(adminActor, { userId: userB.id, role: "admin" });
+    const afterPromote = await adminDal.listAdminUsers(adminActor, { q: userB.email });
+    assert.equal(afterPromote.items[0].role, "admin");
+
+    await adminDal.setAdminUserRole(adminActor, { userId: userB.id, role: "user" });
+
+    // Seed an active session for userB, then ban -> session must be deleted
+    await db.insert(session).values({
+      id: randomUUID(),
+      userId: userB.id,
+      token: `test-ban-token-${Date.now()}`,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+    await adminDal.setAdminUserBanned(adminActor, {
+      userId: userB.id,
+      banned: true,
+      reason: "Test ban",
+    });
+
+    const activeSessions = await db
+      .select({ id: session.id })
+      .from(session)
+      .where(eq(session.userId, userB.id));
+    assert.equal(activeSessions.length, 0);
+
+    const afterBan = await adminDal.listAdminUsers(adminActor, { filter: "banned" });
+    assert.ok(afterBan.items.some((u) => u.id === userB.id && u.banned));
+
+    // Unban userB cleanly
+    await adminDal.setAdminUserBanned(adminActor, { userId: userB.id, banned: false });
+    const afterUnban = await adminDal.listAdminUsers(adminActor, { q: userB.email });
+    assert.equal(afterUnban.items[0].banned, false);
+  });
 });

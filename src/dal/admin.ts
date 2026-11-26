@@ -1,8 +1,16 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, like, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { chapterPanels, chapters, mediaAssets, series } from "@/db/schema";
+import {
+  account,
+  chapterPanels,
+  chapters,
+  mediaAssets,
+  series,
+  session,
+  user,
+} from "@/db/schema";
 import { AppError } from "@/lib/errors";
 import {
   mediaFileExists,
@@ -12,6 +20,8 @@ import {
 import { formatChapterNumber, formatDateShort, slugify } from "@/lib/slug";
 import type { SessionUser } from "@/lib/session";
 import {
+  adminUserBanSchema,
+  adminUserRoleSchema,
   chapterStatusSchema,
   createChapterSchema,
   createSeriesSchema,
@@ -801,4 +811,199 @@ export async function deleteChapterPanel(
   }
 
   return { chapterId };
+}
+
+export interface AdminUserItemDTO {
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "user";
+  emailVerified: boolean;
+  banned: boolean;
+  banReason: string | null;
+  image: string | null;
+  providers: string[];
+  createdAt: string;
+}
+
+export async function listAdminUsers(
+  actor: SessionUser,
+  params?: { q?: string; filter?: string; page?: number },
+): Promise<{
+  items: AdminUserItemDTO[];
+  total: number;
+  page: number;
+  totalPages: number;
+  counts: { all: number; admins: number; banned: number };
+}> {
+  assertAdmin(actor);
+  const q = (params?.q ?? "").trim().slice(0, 100);
+  const filter = params?.filter ?? "";
+  const page = Math.max(1, params?.page ?? 1);
+  const perPage = 25;
+
+  const conditions = [];
+  if (q) {
+    conditions.push(or(like(user.name, `%${q}%`), like(user.email, `%${q}%`))!);
+  }
+  if (filter === "admin") {
+    conditions.push(eq(user.role, "admin"));
+  } else if (filter === "user") {
+    conditions.push(or(eq(user.role, "user"), sql`${user.role} IS NULL`)!);
+  } else if (filter === "banned") {
+    conditions.push(eq(user.banned, true));
+  }
+
+  const whereClause = conditions.length ? and(...conditions) : undefined;
+
+  const [[countRow], [summaryRow], rows] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(user).where(whereClause),
+    db
+      .select({
+        all: sql<number>`count(*)`,
+        admins: sql<number>`SUM(CASE WHEN ${user.role} = 'admin' THEN 1 ELSE 0 END)`,
+        banned: sql<number>`SUM(CASE WHEN ${user.banned} = 1 THEN 1 ELSE 0 END)`,
+      })
+      .from(user),
+    db
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        emailVerified: user.emailVerified,
+        banned: user.banned,
+        banReason: user.banReason,
+        image: user.image,
+        createdAt: user.createdAt,
+      })
+      .from(user)
+      .where(whereClause)
+      .orderBy(desc(user.createdAt), asc(user.id))
+      .limit(perPage)
+      .offset((page - 1) * perPage),
+  ]);
+
+  const userIds = rows.map((r) => r.id);
+  const providerMap = new Map<string, Set<string>>();
+  if (userIds.length > 0) {
+    const accRows = await db
+      .select({ userId: account.userId, providerId: account.providerId })
+      .from(account)
+      .where(inArray(account.userId, userIds));
+    for (const a of accRows) {
+      const set = providerMap.get(a.userId) ?? new Set<string>();
+      set.add(a.providerId);
+      providerMap.set(a.userId, set);
+    }
+  }
+
+  const total = Number(countRow?.count ?? 0);
+  return {
+    items: rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      role: r.role === "admin" ? "admin" : "user",
+      emailVerified: Boolean(r.emailVerified),
+      banned: Boolean(r.banned),
+      banReason: r.banReason ?? null,
+      image: r.image ?? null,
+      providers: Array.from(providerMap.get(r.id) ?? []),
+      createdAt: formatDateShort(r.createdAt),
+    })),
+    total,
+    page,
+    totalPages: Math.max(1, Math.ceil(total / perPage)),
+    counts: {
+      all: Number(summaryRow?.all ?? 0),
+      admins: Number(summaryRow?.admins ?? 0),
+      banned: Number(summaryRow?.banned ?? 0),
+    },
+  };
+}
+
+export async function setAdminUserRole(
+  actor: SessionUser,
+  raw: unknown,
+): Promise<{ userId: string; role: "admin" | "user" }> {
+  assertAdmin(actor);
+  const parsed = adminUserRoleSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      parsed.error.issues[0]?.message ?? "Input role tidak valid.",
+    );
+  }
+  const { userId, role } = parsed.data;
+  if (userId === actor.id && role !== "admin") {
+    throw new AppError(
+      "CONFLICT",
+      "Anda tidak dapat menurunkan role akun Anda sendiri.",
+    );
+  }
+
+  const [existing] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1);
+  if (!existing) {
+    throw new AppError("NOT_FOUND", "Pengguna tidak ditemukan.");
+  }
+
+  await db
+    .update(user)
+    .set({ role, ...(role === "admin" ? { emailVerified: true } : {}) })
+    .where(eq(user.id, userId));
+
+  return { userId, role };
+}
+
+export async function setAdminUserBanned(
+  actor: SessionUser,
+  raw: unknown,
+): Promise<{ userId: string; banned: boolean }> {
+  assertAdmin(actor);
+  const parsed = adminUserBanSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new AppError(
+      "VALIDATION_ERROR",
+      parsed.error.issues[0]?.message ?? "Input status blokir tidak valid.",
+    );
+  }
+  const { userId, banned, reason } = parsed.data;
+  if (userId === actor.id) {
+    throw new AppError(
+      "CONFLICT",
+      "Anda tidak dapat memblokir akun Anda sendiri.",
+    );
+  }
+
+  const [existing] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1);
+  if (!existing) {
+    throw new AppError("NOT_FOUND", "Pengguna tidak ditemukan.");
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(user)
+      .set({
+        banned,
+        banReason: banned ? reason || "Diblokir oleh admin." : null,
+        banExpires: null,
+      })
+      .where(eq(user.id, userId));
+
+    if (banned) {
+      // Immediately terminate active sessions of banned user
+      await tx.delete(session).where(eq(session.userId, userId));
+    }
+  });
+
+  return { userId, banned };
 }

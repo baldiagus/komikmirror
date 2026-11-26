@@ -105,6 +105,17 @@ export const browserLibraryImportSchema = z.object({
   history: z.array(z.string().trim().min(1).max(120)).max(1000).default([]),
 });
 
+export const adminUserRoleSchema = z.object({
+  userId: z.string().trim().min(1, "ID pengguna tidak valid.").max(36),
+  role: z.enum(["admin", "user"]),
+});
+
+export const adminUserBanSchema = z.object({
+  userId: z.string().trim().min(1, "ID pengguna tidak valid.").max(36),
+  banned: z.boolean(),
+  reason: z.string().trim().max(240).optional().default(""),
+});
+
 export const snapshotChapterSchema = z.object({
   id: z.string().trim().min(1).max(120),
   number: z.union([z.number(), z.string()]).transform((val) => {

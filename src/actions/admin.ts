@@ -6,6 +6,8 @@ import {
   createSeriesRecord,
   deleteChapterPanel,
   reorderChapterPanels,
+  setAdminUserBanned,
+  setAdminUserRole,
   setChapterStatus,
   setSeriesStatus,
   updateChapterRecord,
@@ -273,6 +275,52 @@ export async function triggerShinigamiSyncAction(
       `+${report.seriesCreated} seri baru, ${report.seriesUpdated} diperbarui, ` +
       `+${report.chaptersCreated} chapter baru (${report.upstreamMangaFetched} diperiksa).`;
     return { ok: true, data: report, message: msg };
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+export async function setAdminUserRoleAction(
+  userId: string,
+  role: "admin" | "user",
+): Promise<ActionResult<{ userId: string; role: "admin" | "user" }>> {
+  try {
+    const admin = await requireAdmin();
+    const result = await setAdminUserRole(admin, { userId, role });
+    revalidatePath("/admin/users");
+    return {
+      ok: true,
+      data: result,
+      message:
+        role === "admin"
+          ? "Pengguna dipromosikan menjadi admin."
+          : "Role pengguna diturunkan menjadi user.",
+    };
+  } catch (err) {
+    return toActionError(err);
+  }
+}
+
+export async function setAdminUserBannedAction(
+  userId: string,
+  banned: boolean,
+  reason?: string,
+): Promise<ActionResult<{ userId: string; banned: boolean }>> {
+  try {
+    const admin = await requireAdmin();
+    const result = await setAdminUserBanned(admin, {
+      userId,
+      banned,
+      reason: reason ?? "",
+    });
+    revalidatePath("/admin/users");
+    return {
+      ok: true,
+      data: result,
+      message: banned
+        ? "Pengguna diblokir dan seluruh sesinya dihentikan."
+        : "Blokir pengguna telah dibuka.",
+    };
   } catch (err) {
     return toActionError(err);
   }
