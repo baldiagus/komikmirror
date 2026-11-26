@@ -110,6 +110,7 @@ export function SiteHeader({
                   <small>{user.email}</small>
                 </div>
                 <Link href="/library">Pustaka saya</Link>
+                <Link href="/settings">Pengaturan akun</Link>
                 {user.role === "admin" && (
                   <Link href="/admin/series">Panel Admin</Link>
                 )}

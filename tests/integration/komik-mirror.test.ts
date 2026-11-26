@@ -700,4 +700,31 @@ describe("Komik Mirror MySQL Integration Suite", async () => {
     const afterUnban = await adminDal.listAdminUsers(adminActor, { q: userB.email });
     assert.equal(afterUnban.items[0].banned, false);
   });
+
+  it("supports own profile name update and per-account library JSON export", async () => {
+    const accountDal = await import("../../src/dal/account");
+
+    // Reject empty or oversized display name
+    await assert.rejects(
+      () => accountDal.updateOwnDisplayName(userA.id, "   "),
+      (err: unknown) => err instanceof AppError && err.code === "VALIDATION_ERROR",
+    );
+
+    const updated = await accountDal.updateOwnDisplayName(userA.id, "Pembaca A Baru");
+    assert.equal(updated.name, "Pembaca A Baru");
+
+    const overviewA = await accountDal.getUserAccountOverview(userA.id);
+    assert.equal(overviewA?.name, "Pembaca A Baru");
+    assert.ok((overviewA?.libraryCounts.history ?? 0) >= 1);
+
+    const exportA = await accountDal.exportUserLibrarySnapshot(userA.id);
+    assert.equal(exportA.version, "shinigami-lab-v1");
+    assert.ok(exportA.history.length >= 1);
+
+    // Export of userB must NOT contain userA's bookmarks/history beyond userB's own rows
+    const exportB = await accountDal.exportUserLibrarySnapshot(userB.id);
+    assert.equal(exportB.version, "shinigami-lab-v1");
+    assert.notEqual(exportA.history.length, 0);
+    assert.notDeepEqual(exportA.history, exportB.history);
+  });
 });
