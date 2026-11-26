@@ -293,13 +293,21 @@ export async function listPublishedCatalog(rawParams: {
   q?: string;
   type?: string;
   genre?: string;
+  status?: string;
   sort?: string;
   page?: string | number;
 }) {
   const parsed = catalogFilterSchema.safeParse(rawParams);
   const filter = parsed.success
     ? parsed.data
-    : { q: "", type: "" as const, genre: "", sort: "" as const, page: 1 };
+    : {
+        q: "",
+        type: "" as const,
+        genre: "",
+        status: "" as const,
+        sort: "" as const,
+        page: 1,
+      };
 
   const conditions = [eq(series.status, "published")];
   if (filter.type) {
@@ -307,6 +315,9 @@ export async function listPublishedCatalog(rawParams: {
   }
   if (filter.genre) {
     conditions.push(eq(series.genre, filter.genre));
+  }
+  if (filter.status) {
+    conditions.push(eq(series.publicationStatus, filter.status));
   }
   if (filter.q) {
     conditions.push(like(series.title, `%${filter.q}%`));
@@ -324,7 +335,9 @@ export async function listPublishedCatalog(rawParams: {
   const page = Math.min(totalPages, Math.max(1, filter.page));
 
   let orderByClause = [desc(series.updatedAt), asc(series.id)];
-  if (filter.sort === "rating") {
+  if (filter.sort === "popular") {
+    orderByClause = [desc(series.followers), asc(series.rank), asc(series.id)];
+  } else if (filter.sort === "rating") {
     orderByClause = [desc(series.rating), desc(series.followers), asc(series.id)];
   } else if (filter.sort === "name") {
     orderByClause = [asc(series.title), asc(series.id)];
@@ -351,6 +364,7 @@ export async function listPublishedCatalog(rawParams: {
     total,
     page,
     totalPages,
+    pageSize: CATALOG_PAGE_SIZE,
     filter,
     genres: genreRows.map((g) => g.genre).filter(Boolean),
   };

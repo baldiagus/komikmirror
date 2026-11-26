@@ -11,6 +11,7 @@ export function CatalogSortSelect({ defaultValue }: { defaultValue: string }) {
       onChange={(e) => e.currentTarget.form?.requestSubmit()}
     >
       <option value="">Update terbaru</option>
+      <option value="popular">Terpopuler</option>
       <option value="rating">Rating tertinggi</option>
       <option value="name">Judul A–Z</option>
     </select>

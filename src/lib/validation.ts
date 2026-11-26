@@ -94,7 +94,8 @@ export const catalogFilterSchema = z.object({
   q: z.string().trim().max(100).optional().default(""),
   type: z.enum(["", ...SERIES_TYPES]).optional().default(""),
   genre: z.string().trim().max(80).optional().default(""),
-  sort: z.enum(["", "rating", "name"]).optional().default(""),
+  status: z.enum(["", ...PUBLICATION_STATUSES]).optional().default(""),
+  sort: z.enum(["", "popular", "rating", "name"]).optional().default(""),
   page: z.coerce.number().int().min(1).max(1000).optional().default(1),
 });
 

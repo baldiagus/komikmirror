@@ -131,9 +131,13 @@ summary { cursor: pointer; }
 .side, .empty, .composer { padding: 20px; }
 .side h2, .empty h2, .composer h2 { margin-bottom: 8px; }
 .empty { text-align: center; padding-block: 40px; }
-.series-toolbar { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-bottom: 20px; position: relative; }
+.series-toolbar { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-bottom: 12px; position: relative; }
 .filter-pop { position: relative; }
 .filter-pop summary { list-style: none; }
+.filter-pop summary::-webkit-details-marker { display: none; }
+.filter-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding-inline: 6px; border-radius: 999px; background: rgba(245, 158, 11, 0.18); color: var(--accent); font-size: 12px; font-weight: 600; }
+.active-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.filter-chip { min-block-size: 30px; padding: 0 10px; font-size: 12px; gap: 6px; border-color: var(--line-hi); }
 .filter-panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 8; width: 272px; padding: 16px; display: grid; gap: 12px; border-radius: 12px; }
 .series-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .series-card { display: grid; grid-template-columns: 96px 1fr; gap: 16px; padding: 12px; align-items: start; transition: border-color 150ms var(--ease), background-color 150ms var(--ease); }
