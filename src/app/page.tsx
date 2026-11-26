@@ -6,6 +6,8 @@ import {
   RankRail,
 } from "@/components/HomeInteractive";
 import { getHomeData } from "@/dal/catalog";
+import { getContinueReadingList } from "@/dal/library";
+import { getSessionUser } from "@/lib/session";
 import { SERIES_TYPES } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -37,10 +39,14 @@ export default async function HomePage({
   const params = await searchParams;
   const rankIdx = Number(params.rank ?? "0");
   const jenisIdx = Number(params.jenis ?? "0");
-  const data = await getHomeData(
-    Number.isInteger(rankIdx) ? rankIdx : 0,
-    Number.isInteger(jenisIdx) ? jenisIdx : 0,
-  );
+  const [data, viewer] = await Promise.all([
+    getHomeData(
+      Number.isInteger(rankIdx) ? rankIdx : 0,
+      Number.isInteger(jenisIdx) ? jenisIdx : 0,
+    ),
+    getSessionUser(),
+  ]);
+  const continueItems = viewer ? await getContinueReadingList(viewer.id, 6) : [];
 
   return (
     <main id="main" className="home" tabIndex={-1}>
@@ -73,6 +79,46 @@ export default async function HomePage({
           </section>
         )}
       </section>
+
+      {continueItems.length > 0 && (
+        <section className="continue-section" aria-label="Lanjut membaca">
+          <div className="section-heading">
+            <h2>Lanjut Membaca</h2>
+            <Link className="meta" href="/library?tab=history">
+              Lihat riwayat
+            </Link>
+          </div>
+          <div className="continue-grid">
+            {continueItems.map((item) => (
+              <Link
+                key={item.seriesId}
+                className="surface continue-card"
+                href={`/chapter/${item.chapterPublicId}`}
+              >
+                <img
+                  className="cover"
+                  src={item.coverSrc}
+                  alt=""
+                  width={120}
+                  height={180}
+                  loading="lazy"
+                />
+                <div className="continue-body">
+                  <strong>{item.seriesTitle}</strong>
+                  <span className="meta num">
+                    Lanjut Ch. {item.chapterNumber}
+                    {item.latestChapterNumber &&
+                    item.latestChapterNumber !== item.chapterNumber
+                      ? ` / ${item.latestChapterNumber}`
+                      : ""}
+                  </span>
+                  <small className="meta num">{item.readAt}</small>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section id="project">
         <div className="section-heading">

@@ -7,12 +7,14 @@ import { toggleBookmarkAction, toggleQueueAction } from "@/actions/library";
 export function SeriesActions({
   seriesId,
   firstChapterPublicId,
+  continueChapter,
   signedIn,
   initialBookmarked,
   initialQueued,
 }: {
   seriesId: string;
   firstChapterPublicId: string | null;
+  continueChapter?: { publicId: string; number: string } | null;
   signedIn: boolean;
   initialBookmarked: boolean;
   initialQueued: boolean;
@@ -51,7 +53,25 @@ export function SeriesActions({
   return (
     <div>
       <div className="actions">
-        {firstChapterPublicId ? (
+        {continueChapter ? (
+          <>
+            <Link
+              className="primary"
+              href={`/chapter/${continueChapter.publicId}`}
+            >
+              Lanjut Ch. {continueChapter.number}
+            </Link>
+            {firstChapterPublicId &&
+              firstChapterPublicId !== continueChapter.publicId && (
+                <Link
+                  className="chip"
+                  href={`/chapter/${firstChapterPublicId}`}
+                >
+                  Mulai Ch. 1
+                </Link>
+              )}
+          </>
+        ) : firstChapterPublicId ? (
           <Link className="primary" href={`/chapter/${firstChapterPublicId}`}>
             Mulai baca
           </Link>
