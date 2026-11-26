@@ -94,19 +94,23 @@ export default async function SeriesDetailPage({
 
       <section className="series-intro surface">
         <img
-          className="cover"
+          className="cover series-intro-cover"
           src={comic.coverSrc}
           alt={comic.title}
           width={300}
           height={450}
         />
-        <div>
+        <div className="series-intro-head">
           <p className="meta">
             {comic.type} · {comic.genre} · {comic.publicationStatus}
             {comic.rating > 0 ? ` · ${comic.rating.toFixed(1)}` : ""}
           </p>
           <h1 className="page-title">{comic.title}</h1>
-          <p>{comic.summary || "Belum ada sinopsis."}</p>
+        </div>
+        <div className="series-intro-body">
+          <p className="series-summary">
+            {comic.summary || "Belum ada sinopsis."}
+          </p>
 
           <SeriesActions
             seriesId={comic.id}
@@ -154,7 +158,7 @@ export default async function SeriesDetailPage({
             name="ch"
             type="search"
             defaultValue={comic.chapterQuery}
-            placeholder="Cari nomor atau judul chapter (contoh: 120)..."
+            placeholder="Cari chapter (cth: 120)..."
           />
           {comic.chapterOrder !== "desc" && (
             <input type="hidden" name="order" value={comic.chapterOrder} />

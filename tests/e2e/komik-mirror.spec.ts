@@ -335,7 +335,9 @@ test.describe.serial("Komik Mirror End-to-End CRUD, Auth, Reader & Isolation", (
     // Catalog search finds our published E2E series
     await page.goto(`/series?q=${encodeURIComponent(`Komik E2E ${uniqueSuffix}`)}`);
     await expect(
-      page.getByRole("link", { name: new RegExp(`Komik E2E ${uniqueSuffix}`) }),
+      page
+        .locator(".series-grid")
+        .getByRole("link", { name: new RegExp(`Komik E2E ${uniqueSuffix}`) }),
     ).toBeVisible();
 
     // Responsive 390px overflow check across key public routes
