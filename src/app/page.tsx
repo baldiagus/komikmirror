@@ -122,7 +122,7 @@ export default async function HomePage({
 
       <section id="project">
         <div className="section-heading">
-          <h2>Project</h2>
+          <h2>Komik Terbaru</h2>
           <nav className="tabs" aria-label="Filter jenis komik">
             {["Semua", ...SERIES_TYPES].map((label, i) => (
               <Link
