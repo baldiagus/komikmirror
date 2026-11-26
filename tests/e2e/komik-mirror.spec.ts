@@ -85,11 +85,44 @@ test.describe.serial("Komik Mirror End-to-End CRUD, Auth, Reader & Isolation", (
 
     // Legitimate signup via UI creates regular user (no role input)
     await page.goto("/register");
+    await expect(page.locator('[data-google-auth="register"]')).toBeVisible();
     await page.locator('input[name="name"]').fill("Reader E2E A");
     await page.locator('input[name="email"]').fill(userAEmail);
     await page.locator('input[name="password"]').fill(userAPassword);
     await page.getByRole("button", { name: "Buat akun" }).click();
     await expect(page.getByRole("status")).toContainText(/Pendaftaran berhasil/i);
+
+    // Verify Google OAuth error mapping on login & register pages
+    await page.goto("/login?error=signup_disabled");
+    await expect(page.locator('[data-google-auth="login"]')).toBeVisible();
+    await expect(page.locator("main").getByRole("alert")).toContainText(
+      /Pendaftaran akun baru saat ini ditutup/i,
+    );
+    await page.goto("/register?error=access_denied");
+    await expect(page.locator("main").getByRole("alert")).toContainText(
+      /Akses Google dibatalkan/i,
+    );
+
+    // If Google OAuth credentials are configured in the E2E server, verify redirect URL generation
+    if (process.env.E2E_GOOGLE_ENABLED === "true") {
+      const socialRes = await request.post("/api/auth/sign-in/social", {
+        headers: { Origin: origin },
+        data: {
+          provider: "google",
+          callbackURL: "/library",
+          newUserCallbackURL: "/library",
+          errorCallbackURL: "/register",
+          requestSignUp: true,
+          disableRedirect: true,
+        },
+      });
+      expect(socialRes.status()).toBe(200);
+      const socialJson = (await socialRes.json()) as { url?: string; redirect?: boolean };
+      expect(socialJson.url).toMatch(/^https:\/\/accounts\.google\.com\/o\/oauth2\/v2\/auth\?/);
+      const parsedGoogle = new URL(socialJson.url!);
+      expect(parsedGoogle.searchParams.get("prompt")).toBe("select_account");
+      expect(parsedGoogle.searchParams.get("code_challenge_method")).toBe("S256");
+    }
 
     // Fetch verification link from Mailpit and verify email
     const verifyUrl = await waitForMailLink(userAEmail, "Verifikasi email", startTs);
@@ -116,7 +149,7 @@ test.describe.serial("Komik Mirror End-to-End CRUD, Auth, Reader & Isolation", (
     await page.goto("/login");
     await page.locator('input[name="email"]').fill(userAEmail);
     await page.locator('input[name="password"]').fill(userAPassword);
-    await page.getByRole("button", { name: "Masuk" }).click();
+    await page.getByRole("button", { name: "Masuk", exact: true }).click();
     await expect(page.locator("details.user-menu")).toBeVisible();
 
     // Regular user CANNOT access /admin/series (must see 403)
@@ -163,7 +196,7 @@ test.describe.serial("Komik Mirror End-to-End CRUD, Auth, Reader & Isolation", (
     await page.goto("/login");
     await page.locator('input[name="email"]').fill(userAEmail);
     await page.locator('input[name="password"]').fill(userANewPassword);
-    await page.getByRole("button", { name: "Masuk" }).click();
+    await page.getByRole("button", { name: "Masuk", exact: true }).click();
     await expect(page.locator("details.user-menu")).toBeVisible();
   });
 
@@ -175,11 +208,11 @@ test.describe.serial("Komik Mirror End-to-End CRUD, Auth, Reader & Isolation", (
     await page.goto("/login?next=/admin/series");
     await page.locator('input[name="email"]').fill(ADMIN_EMAIL);
     await page.locator('input[name="password"]').fill(ADMIN_PASSWORD);
-    await page.getByRole("button", { name: "Masuk" }).click();
+    await page.getByRole("button", { name: "Masuk", exact: true }).click();
     await page.waitForURL((u) => u.pathname === "/admin/series");
 
     // Create new draft series
-    await page.getByRole("link", { name: /Buat Seri Baru/i }).click();
+    await page.getByRole("link", { name: /Buat Seri Baru/i }).first().click();
     await page.locator('input[name="title"]').fill(`Komik E2E ${uniqueSuffix}`);
     await page.locator('input[name="slug"]').fill(createdSeriesSlug);
     await page.locator('select[name="type"]').selectOption("Manhwa");
@@ -313,6 +346,8 @@ test.describe.serial("Komik Mirror End-to-End CRUD, Auth, Reader & Isolation", (
       `/series/${createdSeriesPublicId}`,
       `/chapter/${createdChapterPublicId}`,
       "/library",
+      "/login",
+      "/register",
     ]) {
       await page.goto(route);
       const overflow = await page.evaluate(
@@ -332,7 +367,7 @@ test.describe.serial("Komik Mirror End-to-End CRUD, Auth, Reader & Isolation", (
     await pageA.goto("/login?next=/library");
     await pageA.locator('input[name="email"]').fill(userAEmail);
     await pageA.locator('input[name="password"]').fill(userANewPassword);
-    await pageA.getByRole("button", { name: "Masuk" }).click();
+    await pageA.getByRole("button", { name: "Masuk", exact: true }).click();
     await pageA.waitForURL((u) => u.pathname === "/library");
 
     // Seed legacy browser storage key `shinigami-lab-v1`
@@ -377,7 +412,7 @@ test.describe.serial("Komik Mirror End-to-End CRUD, Auth, Reader & Isolation", (
     await pageB.goto("/login?next=/library");
     await pageB.locator('input[name="email"]').fill(USER_B_EMAIL);
     await pageB.locator('input[name="password"]').fill(USER_B_PASSWORD);
-    await pageB.getByRole("button", { name: "Masuk" }).click();
+    await pageB.getByRole("button", { name: "Masuk", exact: true }).click();
     await pageB.waitForURL((u) => u.pathname === "/library");
 
     await expect(pageB.getByRole("link", { name: /Bookmark 0/i })).toBeVisible();

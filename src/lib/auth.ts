@@ -5,13 +5,20 @@ import { nextCookies } from "better-auth/next-js";
 import { admin } from "better-auth/plugins";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { getAppOrigin, isPublicSignupAllowed } from "@/lib/env";
+import {
+  getAppOrigin,
+  getGoogleOAuthConfig,
+  getTrustedOrigins,
+  isPublicSignupAllowed,
+} from "@/lib/env";
 import { sendMail } from "@/lib/mailer";
 
 const baseURL = getAppOrigin();
 const rateLimitEnabled = process.env.AUTH_RATE_LIMIT_ENABLED !== "false";
 const signInWindow = Number(process.env.AUTH_SIGNIN_RATE_LIMIT_WINDOW ?? 60);
 const signInMax = Number(process.env.AUTH_SIGNIN_RATE_LIMIT_MAX ?? 10);
+const signupAllowed = isPublicSignupAllowed();
+const googleConfig = getGoogleOAuthConfig();
 
 const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 const resolvedSecret =
@@ -23,15 +30,21 @@ const resolvedSecret =
 export const auth = betterAuth({
   baseURL,
   secret: resolvedSecret,
-  trustedOrigins: [baseURL],
+  trustedOrigins: getTrustedOrigins(),
   database: drizzleAdapter(db, {
     provider: "mysql",
     schema,
   }),
+  account: {
+    accountLinking: {
+      enabled: true,
+      trustedProviders: ["google"],
+    },
+  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-    disableSignUp: !isPublicSignupAllowed(),
+    disableSignUp: !signupAllowed,
     minPasswordLength: 8,
     maxPasswordLength: 128,
     sendResetPassword: async ({ user, url }) => {
@@ -48,6 +61,22 @@ export const auth = betterAuth({
       });
     },
   },
+  ...(googleConfig
+    ? {
+        socialProviders: {
+          google: {
+            clientId: googleConfig.clientId,
+            clientSecret: googleConfig.clientSecret,
+            ...(googleConfig.redirectURI
+              ? { redirectURI: googleConfig.redirectURI }
+              : {}),
+            prompt: "select_account",
+            requireEmailVerification: true,
+            disableSignUp: !signupAllowed,
+          },
+        },
+      }
+    : {}),
   emailVerification: {
     sendOnSignUp: true,
     sendOnSignIn: true,
@@ -80,6 +109,10 @@ export const auth = betterAuth({
     storage: "memory",
     customRules: {
       "/sign-in/email": {
+        window: signInWindow,
+        max: signInMax,
+      },
+      "/sign-in/social": {
         window: signInWindow,
         max: signInMax,
       },

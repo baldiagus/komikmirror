@@ -2,14 +2,22 @@ import React from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { RegisterForm } from "@/components/AuthForms";
-import { isPublicSignupAllowed } from "@/lib/env";
+import { isGoogleAuthEnabled, isPublicSignupAllowed } from "@/lib/env";
 import { getSessionUser } from "@/lib/session";
 
 export const metadata = { title: "Daftar" };
 
-export default async function RegisterPage() {
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string; error?: string }>;
+}) {
   const user = await getSessionUser();
-  if (user) redirect("/");
+  const params = await searchParams;
+  const nextPath = params.next ?? "/library";
+  if (user) {
+    redirect(nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/");
+  }
 
   if (!isPublicSignupAllowed()) {
     return (
@@ -30,7 +38,11 @@ export default async function RegisterPage() {
 
   return (
     <main id="main" className="page" tabIndex={-1}>
-      <RegisterForm />
+      <RegisterForm
+        nextPath={nextPath}
+        googleEnabled={isGoogleAuthEnabled()}
+        oauthError={params.error ?? null}
+      />
     </main>
   );
 }

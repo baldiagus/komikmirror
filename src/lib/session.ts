@@ -9,6 +9,7 @@ export interface SessionUser {
   name: string;
   role: string;
   emailVerified: boolean;
+  image?: string | null;
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -22,6 +23,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     name: session.user.name,
     role: session.user.role ?? "user",
     emailVerified: Boolean(session.user.emailVerified),
+    image: session.user.image ?? null,
   };
 }
 

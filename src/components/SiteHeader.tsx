@@ -10,6 +10,7 @@ export interface HeaderUser {
   name: string;
   email: string;
   role: string;
+  image?: string | null;
 }
 
 function initials(name: string): string {
@@ -32,6 +33,7 @@ export function SiteHeader({
 }) {
   const pathname = usePathname();
   const [signingOut, setSigningOut] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   const navItems = [
     { label: "Komik", href: "/series" },
@@ -88,7 +90,19 @@ export function SiteHeader({
           {user ? (
             <details className="user-menu">
               <summary className="avatar-pill" aria-label="Menu pengguna">
-                {initials(user.name)}
+                {user.image && !avatarFailed ? (
+                  <img
+                    className="avatar-img"
+                    src={user.image}
+                    alt={user.name}
+                    width={36}
+                    height={36}
+                    referrerPolicy="no-referrer"
+                    onError={() => setAvatarFailed(true)}
+                  />
+                ) : (
+                  initials(user.name)
+                )}
               </summary>
               <nav className="surface" aria-label="Menu pengguna">
                 <div className="user-menu-head">

@@ -35,7 +35,12 @@ export default async function RootLayout({
         <SiteHeader
           user={
             user
-              ? { name: user.name, email: user.email, role: user.role }
+              ? {
+                  name: user.name,
+                  email: user.email,
+                  role: user.role,
+                  image: user.image ?? null,
+                }
               : null
           }
           signupAllowed={signupAllowed}
