@@ -17,7 +17,7 @@ export const mediaAssets = mysqlTable(
   "media_assets",
   {
     id: char("id", { length: 36 }).primaryKey(),
-    kind: mysqlEnum("kind", ["cover", "panel"]).notNull(),
+    kind: mysqlEnum("kind", ["cover", "panel", "ad"]).notNull(),
     storageKey: varchar("storage_key", { length: 255 }).notNull().unique(),
     mimeType: varchar("mime_type", { length: 64 }).notNull(),
     byteSize: int("byte_size", { unsigned: true }).notNull(),

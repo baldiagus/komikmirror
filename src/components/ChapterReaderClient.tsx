@@ -3,7 +3,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AdSlot } from "@/components/AdSlot";
 import { Icon } from "@/components/Icons";
+import type { PublicAdDTO } from "@/dal/ads";
 import type { PanelDTO } from "@/dal/catalog";
 import {
   ensureGsapRegistered,
@@ -81,6 +83,8 @@ export function ChapterReaderClient({
   prevChapter,
   nextChapter,
   allChapters,
+  topAd = null,
+  bottomAd = null,
 }: {
   seriesPublicId: string;
   seriesTitle: string;
@@ -91,6 +95,8 @@ export function ChapterReaderClient({
   prevChapter: { publicId: string; number: string; title: string } | null;
   nextChapter: { publicId: string; number: string; title: string } | null;
   allChapters: { publicId: string; number: string; title: string }[];
+  topAd?: PublicAdDTO | null;
+  bottomAd?: PublicAdDTO | null;
 }) {
   const router = useRouter();
   const [widthMode, setWidthMode] = useState<WidthMode>("compact");
@@ -252,6 +258,8 @@ export function ChapterReaderClient({
         <h1 className="page-title">{heading}</h1>
         {renderNav()}
 
+        <AdSlot ad={topAd} />
+
         {panels.length > 0 ? (
           <div id="chapter-panels" className="panels">
             {panels.map((panel, idx) => (
@@ -271,6 +279,8 @@ export function ChapterReaderClient({
             </p>
           </section>
         )}
+
+        <AdSlot ad={bottomAd} />
 
         {renderNav()}
       </article>

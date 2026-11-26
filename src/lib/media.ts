@@ -5,7 +5,7 @@ import path from "node:path";
 import { getMediaRoot } from "@/lib/env";
 import { AppError } from "@/lib/errors";
 
-export type MediaKind = "cover" | "panel";
+export type MediaKind = "cover" | "panel" | "ad";
 
 export interface InspectedImage {
   mimeType: "image/webp" | "image/png" | "image/jpeg";
@@ -38,10 +38,16 @@ const LIMITS: Record<
     maxHeight: 16384,
     maxPixels: 25_000_000,
   },
+  ad: {
+    maxBytes: 4 * 1024 * 1024,
+    maxWidth: 4096,
+    maxHeight: 2048,
+    maxPixels: 8_000_000,
+  },
 };
 
 const STORAGE_KEY_RE =
-  /^(covers\/[0-9a-f-]{36}|panels\/[0-9a-f-]{36}\/[0-9a-f-]{36})\.(webp|png|jpg)$/;
+  /^(covers\/[0-9a-f-]{36}|ads\/[0-9a-f-]{36}|panels\/[0-9a-f-]{36}\/[0-9a-f-]{36})\.(webp|png|jpg)$/;
 
 function parsePngDimensions(buf: Buffer): { width: number; height: number } | null {
   if (buf.length < 24) return null;
@@ -228,6 +234,8 @@ export async function stageAndCommitMediaBuffer(options: {
   let storageKey: string;
   if (options.kind === "cover") {
     storageKey = `covers/${id}.${inspected.ext}`;
+  } else if (options.kind === "ad") {
+    storageKey = `ads/${id}.${inspected.ext}`;
   } else {
     if (!options.chapterId || !/^[0-9a-f-]{36}$/.test(options.chapterId)) {
       throw new AppError("VALIDATION_ERROR", "ID chapter tidak valid untuk panel.");

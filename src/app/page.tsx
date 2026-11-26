@@ -1,10 +1,12 @@
 import React from "react";
 import Link from "next/link";
+import { AdSlot } from "@/components/AdSlot";
 import {
   HeroCarousel,
   ProjectGrid,
   RankRail,
 } from "@/components/HomeInteractive";
+import { getActiveAdForSlot } from "@/dal/ads";
 import { getHomeData } from "@/dal/catalog";
 import { getContinueReadingList } from "@/dal/library";
 import { getSessionUser } from "@/lib/session";
@@ -46,7 +48,10 @@ export default async function HomePage({
     ),
     getSessionUser(),
   ]);
-  const continueItems = viewer ? await getContinueReadingList(viewer.id, 6) : [];
+  const [continueItems, homeTopAd] = await Promise.all([
+    viewer ? getContinueReadingList(viewer.id, 6) : Promise.resolve([]),
+    getActiveAdForSlot("home_top", viewer),
+  ]);
 
   return (
     <main id="main" className="home" tabIndex={-1}>
@@ -119,6 +124,8 @@ export default async function HomePage({
           </div>
         </section>
       )}
+
+      <AdSlot ad={homeTopAd} />
 
       <section id="project">
         <div className="section-heading">

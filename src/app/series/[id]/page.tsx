@@ -1,8 +1,10 @@
 import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AdSlot } from "@/components/AdSlot";
 import { Icon } from "@/components/Icons";
 import { SeriesActions } from "@/components/SeriesActions";
+import { getActiveAdForSlot } from "@/dal/ads";
 import { getSeriesDetail } from "@/dal/catalog";
 import { getUserSeriesFlags, getUserSeriesReadState } from "@/dal/library";
 import { getSessionUser } from "@/lib/session";
@@ -39,15 +41,15 @@ export default async function SeriesDetailPage({
   });
   if (!comic) notFound();
 
-  const [flags, readState] = viewer
-    ? await Promise.all([
-        getUserSeriesFlags(viewer.id, comic.id),
-        getUserSeriesReadState(viewer.id, comic.id),
-      ])
-    : [
-        { bookmarked: false, queued: false },
-        { readChapterIds: [], lastReadChapter: null },
-      ];
+  const [flags, readState, seriesMidAd] = await Promise.all([
+    viewer
+      ? getUserSeriesFlags(viewer.id, comic.id)
+      : Promise.resolve({ bookmarked: false, queued: false }),
+    viewer
+      ? getUserSeriesReadState(viewer.id, comic.id)
+      : Promise.resolve({ readChapterIds: [], lastReadChapter: null }),
+    getActiveAdForSlot("series_mid", viewer),
+  ]);
   const readChapterSet = new Set(readState.readChapterIds);
 
   const baseHref = `/series/${comic.publicId}`;
@@ -122,6 +124,8 @@ export default async function SeriesDetailPage({
           />
         </div>
       </section>
+
+      <AdSlot ad={seriesMidAd} />
 
       <section id="chapters">
         <div className="section-heading">

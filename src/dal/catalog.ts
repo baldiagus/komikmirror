@@ -1,7 +1,13 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { chapterPanels, chapters, mediaAssets, series } from "@/db/schema";
+import {
+  adCampaigns,
+  chapterPanels,
+  chapters,
+  mediaAssets,
+  series,
+} from "@/db/schema";
 import { fallbackCoverDataUri } from "@/lib/artwork";
 import { isShinigamiRemotePanelsEnabled } from "@/lib/env";
 import {
@@ -759,6 +765,21 @@ export async function getMediaAccessRecord(
       )
       .limit(1);
     isPublic = Boolean(pubSeries);
+  } else if (asset.kind === "ad") {
+    const [activeAd] = await db
+      .select({ id: adCampaigns.id })
+      .from(adCampaigns)
+      .where(
+        and(
+          eq(adCampaigns.status, "active"),
+          or(
+            eq(adCampaigns.desktopMediaId, asset.id),
+            eq(adCampaigns.mobileMediaId, asset.id),
+          ),
+        ),
+      )
+      .limit(1);
+    isPublic = Boolean(activeAd);
   } else {
     const [pubPanel] = await db
       .select({ id: chapterPanels.id })

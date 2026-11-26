@@ -282,6 +282,54 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.72); }
 .panel-admin-row { display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; align-items: center; padding: 12px; }
 .panel-thumb { width: 72px; height: 96px; object-fit: cover; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); }
 
+/* Hybrid Ad Slots & Admin Ad Manager */
+.ad-slot {
+  position: relative; display: grid; justify-items: center; gap: 6px;
+  margin-block: 16px; width: 100%;
+}
+.ad-label {
+  font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--muted); line-height: 1;
+}
+.ad-banner-link {
+  display: block; width: 100%; max-width: 970px; overflow: hidden;
+  border-radius: 10px; border: 1px solid var(--line); background: var(--panel);
+  transition: border-color 150ms var(--ease);
+}
+.ad-banner-link:hover { border-color: var(--line-hi); }
+.ad-banner-link picture { display: block; width: 100%; }
+.ad-banner-img { width: 100%; height: auto; max-height: 220px; object-fit: cover; display: block; }
+.ad-network-wrap {
+  width: 100%; max-width: 970px; height: var(--ad-h-desktop, 100px);
+  border-radius: 10px; border: 1px solid var(--line); background: var(--panel);
+  overflow: hidden;
+}
+.ad-network-frame { width: 100%; height: 100%; border: 0; display: block; background: transparent; }
+.ad-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.ad-kpi { display: grid; gap: 4px; padding: 14px 16px; }
+.ad-kpi strong { font-size: 20px; font-weight: 600; }
+.ad-fieldset { padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+.ad-checkbox { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13.5px; color: var(--text-2); }
+.ad-checkbox input[type='checkbox'] { width: 16px; height: 16px; min-height: 16px; accent-color: var(--accent); margin: 0; }
+.ad-admin-card { display: grid; gap: 12px; padding: 14px 16px; }
+.ad-admin-top { display: grid; grid-template-columns: 140px 1fr; gap: 14px; align-items: start; }
+.ad-admin-thumb {
+  width: 140px; height: 76px; object-fit: cover; border-radius: 8px;
+  background: var(--panel); border: 1px solid var(--line);
+}
+.ad-admin-thumb-placeholder {
+  display: grid; place-items: center; font-size: 12px; font-weight: 600;
+  color: var(--muted); letter-spacing: 0.04em;
+}
+.ad-admin-main { display: grid; gap: 6px; min-width: 0; }
+.ad-admin-meta { overflow-wrap: anywhere; }
+.ad-admin-meta code { font-size: 12px; padding: 1px 5px; border-radius: 4px; background: var(--panel); border: 1px solid var(--line); }
+.ad-admin-stats { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; }
+.ad-admin-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ad-edit-drawer summary { display: inline-flex; list-style: none; }
+.ad-edit-drawer summary::-webkit-details-marker { display: none; }
+.ad-edit-form { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+
 @media (max-width: 820px) {
   .series-grid, .two-col, .admin-grid, .continue-grid, .history-grid, .settings-grid { grid-template-columns: 1fr; }
 }
@@ -478,6 +526,19 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.72); }
   .panel-admin-row .actions button { flex: 1; min-height: 34px; font-size: 12.5px; }
   .panel-admin-row code { overflow-wrap: anywhere; font-size: 11px; }
   .panel-thumb { width: 56px; height: 76px; }
+
+  /* Ads Mobile */
+  .ad-slot { margin-block: 12px; }
+  .ad-banner-img { max-height: 150px; }
+  .ad-network-wrap { height: var(--ad-h-mobile, 100px); }
+  .ad-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .ad-kpi { padding: 10px 12px; }
+  .ad-kpi strong { font-size: 17px; }
+  .ad-admin-card { padding: 12px; gap: 10px; }
+  .ad-admin-top { grid-template-columns: 1fr; gap: 10px; }
+  .ad-admin-thumb { width: 100%; height: 96px; }
+  .ad-admin-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .ad-admin-actions > * { width: 100%; min-height: 36px; padding-inline: 8px; font-size: 12.5px; }
 }
 @media (max-width: 480px) {
   .hero-cover { flex-basis: 34%; }

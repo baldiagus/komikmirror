@@ -1,6 +1,7 @@
 import React from "react";
 import { notFound } from "next/navigation";
 import { ChapterReaderClient } from "@/components/ChapterReaderClient";
+import { getActiveAdsForSlots } from "@/dal/ads";
 import { getChapterForReader } from "@/dal/catalog";
 import { recordUserHistory } from "@/dal/library";
 import { getSessionUser } from "@/lib/session";
@@ -17,9 +18,12 @@ export default async function ChapterReaderPage({
   const data = await getChapterForReader(chapterId, viewer);
   if (!data) notFound();
 
-  if (viewer && !data.isPreview) {
-    await recordUserHistory(viewer.id, data.chapter.id, 100);
-  }
+  const [, readerAds] = await Promise.all([
+    viewer && !data.isPreview
+      ? recordUserHistory(viewer.id, data.chapter.id, 100)
+      : Promise.resolve(),
+    getActiveAdsForSlots(["reader_top", "reader_bottom"], viewer),
+  ]);
 
   const heading =
     data.chapter.title &&
@@ -39,6 +43,8 @@ export default async function ChapterReaderPage({
         prevChapter={data.prevChapter}
         nextChapter={data.nextChapter}
         allChapters={data.allChapters}
+        topAd={readerAds.reader_top}
+        bottomAd={readerAds.reader_bottom}
       />
     </main>
   );

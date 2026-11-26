@@ -727,4 +727,137 @@ describe("Komik Mirror MySQL Integration Suite", async () => {
     assert.notEqual(exportA.history.length, 0);
     assert.notDeepEqual(exportA.history, exportB.history);
   });
+
+  it("manages hybrid banner & network ads with admin auth, media protection, impressions & clicks", async () => {
+    const adsDal = await import("../../src/dal/ads");
+
+    // Non-admin cannot access or mutate ads
+    await assert.rejects(
+      () => adsDal.listAdminAds(userA),
+      (err: unknown) => err instanceof AppError && err.code === "FORBIDDEN",
+    );
+    await assert.rejects(
+      () =>
+        adsDal.createAdminAd(userA, {
+          name: "Unauthorized",
+          slot: "home_top",
+          adType: "banner",
+        }),
+      (err: unknown) => err instanceof AppError && err.code === "FORBIDDEN",
+    );
+
+    // Reject javascript: targetUrl
+    await assert.rejects(
+      () =>
+        adsDal.createAdminAd(adminActor, {
+          name: "Bad URL",
+          slot: "home_top",
+          adType: "banner",
+          targetUrl: "javascript:alert(1)",
+        }),
+      (err: unknown) => err instanceof AppError && err.code === "VALIDATION_ERROR",
+    );
+
+    // Create draft banner ad with desktop & mobile PNGs
+    const createdBanner = await adsDal.createAdminAd(
+      adminActor,
+      {
+        name: "Sponsor Topup Int",
+        slot: "home_top",
+        adType: "banner",
+        status: "draft",
+        priority: 50,
+        hideForAdmin: true,
+        targetUrl: "https://sponsor.example.com/topup",
+        imageAlt: "Promo Topup",
+      },
+      { desktopBuffer: VALID_PNG_1, mobileBuffer: VALID_PNG_2 },
+    );
+    assert.equal(createdBanner.status, "draft");
+
+    const listedDraft = await adsDal.listAdminAds(adminActor, { slot: "home_top" });
+    const bannerItem = listedDraft.items.find((x) => x.id === createdBanner.id);
+    assert.ok(bannerItem);
+    assert.ok(bannerItem.desktopMediaId);
+    assert.ok(bannerItem.mobileMediaId);
+
+    // Draft ad creative MUST NOT be readable by anonymous visitor
+    const guestDraftImg = await catalogDal.getMediaAccessRecord(
+      bannerItem.desktopMediaId!,
+      null,
+    );
+    assert.equal(guestDraftImg.allowed, false);
+    const adminDraftImg = await catalogDal.getMediaAccessRecord(
+      bannerItem.desktopMediaId!,
+      adminActor,
+    );
+    assert.equal(adminDraftImg.allowed, true);
+
+    // Activate banner -> public media becomes accessible & slot serves ad
+    await adsDal.setAdminAdStatus(adminActor, {
+      adId: createdBanner.id,
+      status: "active",
+    });
+
+    const guestActiveImg = await catalogDal.getMediaAccessRecord(
+      bannerItem.desktopMediaId!,
+      null,
+    );
+    assert.equal(guestActiveImg.allowed, true);
+    assert.equal(guestActiveImg.isPublic, true);
+
+    // Respects hideForAdmin for admin viewer
+    const hiddenForAdmin = await adsDal.getActiveAdForSlot("home_top", adminActor);
+    assert.equal(hiddenForAdmin, null);
+
+    // Serves active ad to regular user and increments impressions
+    const publicAd = await adsDal.getActiveAdForSlot("home_top", userA);
+    assert.ok(publicAd);
+    assert.equal(publicAd.id, createdBanner.id);
+    assert.equal(publicAd.adType, "banner");
+    assert.equal(publicAd.clickUrl, `/api/ads/click/${createdBanner.id}`);
+
+    // Click redirect increments clicks and returns targetUrl
+    const clickRes = await adsDal.resolveAdClick(createdBanner.id);
+    assert.deepEqual(clickRes, { targetUrl: "https://sponsor.example.com/topup" });
+
+    // Create active network ad in reader_top
+    const createdNet = await adsDal.createAdminAd(adminActor, {
+      name: "Network Slot Test",
+      slot: "reader_top",
+      adType: "network",
+      status: "active",
+      networkCode: "<div>Network Ad</div>",
+      frameHeightDesktop: 120,
+      frameHeightMobile: 90,
+    });
+    const readerAds = await adsDal.getActiveAdsForSlots(
+      ["reader_top", "reader_bottom"],
+      null,
+    );
+    assert.equal(readerAds.reader_top?.id, createdNet.id);
+    assert.equal(readerAds.reader_top?.adType, "network");
+    assert.equal(readerAds.reader_bottom, null);
+
+    // Verify stats recorded and reset works
+    const afterStats = await adsDal.listAdminAds(adminActor);
+    const tracked = afterStats.items.find((x) => x.id === createdBanner.id);
+    assert.equal(tracked?.impressions, 1);
+    assert.equal(tracked?.clicks, 1);
+
+    await adsDal.resetAdminAdStats(adminActor, createdBanner.id);
+    const afterReset = await adsDal.listAdminAds(adminActor);
+    const resetItem = afterReset.items.find((x) => x.id === createdBanner.id);
+    assert.equal(resetItem?.impressions, 0);
+    assert.equal(resetItem?.clicks, 0);
+
+    // Delete cleans up ads and orphaned ad media
+    await adsDal.deleteAdminAd(adminActor, createdBanner.id);
+    await adsDal.deleteAdminAd(adminActor, createdNet.id);
+    const deletedMedia = await catalogDal.getMediaAccessRecord(
+      bannerItem.desktopMediaId!,
+      adminActor,
+    );
+    assert.equal(deletedMedia.allowed, false);
+  });
 });

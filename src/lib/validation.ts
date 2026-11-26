@@ -4,6 +4,47 @@ export const SERIES_TYPES = ["Manhwa", "Manhua", "Manga"] as const;
 export const PUBLICATION_STATUSES = ["Ongoing", "Completed", "Hiatus"] as const;
 export const WORKFLOW_STATUSES = ["draft", "published", "archived"] as const;
 
+export const AD_SLOTS = [
+  "home_top",
+  "catalog_top",
+  "series_mid",
+  "reader_top",
+  "reader_bottom",
+] as const;
+export type AdSlotKey = (typeof AD_SLOTS)[number];
+
+export const AD_SLOT_META: Record<
+  AdSlotKey,
+  { label: string; description: string }
+> = {
+  home_top: {
+    label: "Beranda (Atas)",
+    description: "Tampil di bawah Hero & Peringkat sebelum Komik Terbaru.",
+  },
+  catalog_top: {
+    label: "Daftar Komik (Atas)",
+    description: "Banner tipis di atas grid hasil halaman Daftar Komik.",
+  },
+  series_mid: {
+    label: "Detail Komik (Tengah)",
+    description: "Tampil di antara sinopsis komik dan daftar chapter.",
+  },
+  reader_top: {
+    label: "Pembaca (Atas Panel)",
+    description: "Tampil tepat di atas panel pertama saat membaca chapter.",
+  },
+  reader_bottom: {
+    label: "Pembaca (Bawah Panel)",
+    description: "Tampil tepat di bawah panel terakhir sebelum navigasi chapter.",
+  },
+};
+
+export const AD_TYPES = ["banner", "network"] as const;
+export type AdType = (typeof AD_TYPES)[number];
+
+export const AD_STATUSES = ["draft", "active", "paused"] as const;
+export type AdStatus = (typeof AD_STATUSES)[number];
+
 export const ALL_GENRES = [
   "Action",
   "Adventure",
@@ -114,6 +155,97 @@ export const adminUserBanSchema = z.object({
   userId: z.string().trim().min(1, "ID pengguna tidak valid.").max(36),
   banned: z.boolean(),
   reason: z.string().trim().max(240).optional().default(""),
+});
+
+const safeHttpUrlSchema = z
+  .string()
+  .trim()
+  .max(512, "URL tujuan maksimal 512 karakter.")
+  .refine(
+    (val) => {
+      if (!val) return true;
+      try {
+        const u = new URL(val);
+        return u.protocol === "https:" || u.protocol === "http:";
+      } catch {
+        return false;
+      }
+    },
+    "URL tujuan harus menggunakan protokol http:// atau https:// yang valid.",
+  );
+
+const optionalDatetimeSchema = z
+  .string()
+  .trim()
+  .optional()
+  .default("")
+  .refine(
+    (val) => !val || !Number.isNaN(Date.parse(val)),
+    "Format tanggal jadwal tidak valid.",
+  );
+
+const adBaseSchema = z.object({
+  name: z.string().trim().min(1, "Nama kampanye wajib diisi.").max(160),
+  slot: z.enum(AD_SLOTS),
+  adType: z.enum(AD_TYPES),
+  status: z.enum(AD_STATUSES).optional().default("draft"),
+  priority: z.coerce.number().int().min(0).max(1000).optional().default(10),
+  hideForAdmin: z.boolean().optional().default(false),
+  imageAlt: z.string().trim().max(200).optional().default(""),
+  targetUrl: safeHttpUrlSchema.optional().default(""),
+  openInNewTab: z.boolean().optional().default(true),
+  networkCode: z
+    .string()
+    .trim()
+    .max(16_000, "Kode ad network maksimal 16.000 karakter.")
+    .optional()
+    .default(""),
+  frameHeightDesktop: z.coerce
+    .number()
+    .int()
+    .min(50, "Tinggi frame minimal 50px.")
+    .max(600, "Tinggi frame maksimal 600px.")
+    .optional()
+    .default(100),
+  frameHeightMobile: z.coerce
+    .number()
+    .int()
+    .min(50, "Tinggi frame minimal 50px.")
+    .max(600, "Tinggi frame maksimal 600px.")
+    .optional()
+    .default(100),
+  startsAt: optionalDatetimeSchema,
+  endsAt: optionalDatetimeSchema,
+});
+
+function validateAdDates(
+  val: { startsAt: string; endsAt: string },
+  ctx: z.RefinementCtx,
+) {
+  if (val.startsAt && val.endsAt) {
+    const startMs = Date.parse(val.startsAt);
+    const endMs = Date.parse(val.endsAt);
+    if (endMs <= startMs) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["endsAt"],
+        message: "Waktu selesai harus setelah waktu mulai.",
+      });
+    }
+  }
+}
+
+export const createAdSchema = adBaseSchema.superRefine(validateAdDates);
+
+export const updateAdSchema = adBaseSchema
+  .extend({
+    adId: z.string().uuid("ID kampanye iklan tidak valid."),
+  })
+  .superRefine(validateAdDates);
+
+export const adStatusSchema = z.object({
+  adId: z.string().uuid("ID kampanye iklan tidak valid."),
+  status: z.enum(AD_STATUSES),
 });
 
 export const snapshotChapterSchema = z.object({

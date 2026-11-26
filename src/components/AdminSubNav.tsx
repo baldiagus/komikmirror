@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 const ADMIN_TABS = [
   { label: "Kelola Seri", href: "/admin/series" },
   { label: "Kelola Pengguna", href: "/admin/users" },
+  { label: "Kelola Iklan", href: "/admin/ads" },
 ];
 
 export function AdminSubNav() {

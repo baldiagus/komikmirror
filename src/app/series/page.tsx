@@ -1,8 +1,11 @@
 import React from "react";
 import Link from "next/link";
+import { AdSlot } from "@/components/AdSlot";
 import { CatalogSortSelect } from "@/components/CatalogSortSelect";
 import { Icon } from "@/components/Icons";
+import { getActiveAdForSlot } from "@/dal/ads";
 import { listPublishedCatalog } from "@/dal/catalog";
+import { getSessionUser } from "@/lib/session";
 import { PUBLICATION_STATUSES, SERIES_TYPES } from "@/lib/validation";
 
 export const dynamic = "force-dynamic";
@@ -60,7 +63,11 @@ export default async function SeriesCatalogPage({
   }>;
 }) {
   const params = await searchParams;
-  const data = await listPublishedCatalog(params);
+  const [data, viewer] = await Promise.all([
+    listPublishedCatalog(params),
+    getSessionUser(),
+  ]);
+  const catalogTopAd = await getActiveAdForSlot("catalog_top", viewer);
 
   const activeFilterCount = [
     data.filter.type,
@@ -200,6 +207,8 @@ export default async function SeriesCatalogPage({
           ? `Menampilkan ${rangeStart.toLocaleString("id-ID")}–${rangeEnd.toLocaleString("id-ID")} dari ${data.total.toLocaleString("id-ID")} komik`
           : "0 komik"}
       </p>
+
+      <AdSlot ad={catalogTopAd} />
 
       {data.items.length > 0 ? (
         <>
